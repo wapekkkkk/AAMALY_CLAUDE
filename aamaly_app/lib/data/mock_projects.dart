@@ -16,6 +16,8 @@ class MockProjects {
         totalTasks: 5,
         completedTasks: 2,
         inProgressTasks: 3,
+        ownerId: '1', // ADD THIS (current user)
+        collaboratorIds: ['1', '2'],
       ),
       Project(
         id: '2',
@@ -26,6 +28,8 @@ class MockProjects {
         totalTasks: 3,
         completedTasks: 1,
         inProgressTasks: 2,
+        ownerId: '1', // ADD THIS (current user)
+        collaboratorIds: [],
       ),
       Project(
         id: '3',
@@ -36,6 +40,8 @@ class MockProjects {
         totalTasks: 8,
         completedTasks: 3,
         inProgressTasks: 5,
+        ownerId: '1', // ADD THIS (current user)
+        collaboratorIds: [],
       ),
     ];
   }

@@ -1,10 +1,12 @@
 // ============================================
-// FILE: lib/screens/create_project_page.dart
+// FILE: lib/screens/create_project_page.dart (UPDATED WITH COLLABORATORS)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/project.dart';
+import '../models/user.dart';
+import '../data/mock_users.dart';
 
 class CreateProjectPage extends StatefulWidget {
   const CreateProjectPage({Key? key}) : super(key: key);
@@ -19,12 +21,16 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
   final _codeController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  Color _selectedColor = const Color(0xFF7B68EE); // Default purple
+  Color _selectedColor = const Color(0xFF2196F3);
   bool _isLoading = false;
+
+  // NEW: Collaborators
+  List<User> _allFriends = [];
+  List<String> _selectedCollaboratorIds = [];
 
   // Predefined color palette
   final List<Color> _colorPalette = [
-    const Color(0xFF7B68EE), // Purple
+    const Color(0xFF2196F3), // Purple
     const Color(0xFFFF69B4), // Pink
     const Color(0xFF00CED1), // Cyan
     const Color(0xFFFFD700), // Gold
@@ -35,6 +41,12 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
     const Color(0xFF4169E1), // Royal Blue
     const Color(0xFFFF8C00), // Dark Orange
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _allFriends = MockUsers.getFriends();
+  }
 
   @override
   void dispose() {
@@ -61,12 +73,14 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
       name: _nameController.text.trim(),
       code: _codeController.text.trim(),
       dateCreated: DateTime.now(),
-      taskTypes: [], // Will be populated as tasks are added
+      taskTypes: [],
       totalTasks: 0,
       completedTasks: 0,
       inProgressTasks: 0,
       color: _selectedColor,
       description: _descriptionController.text.trim(),
+      ownerId: MockUsers.currentUser.id, // NEW: Set owner
+      collaboratorIds: _selectedCollaboratorIds, // NEW: Add collaborators
     );
 
     setState(() {
@@ -76,8 +90,12 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
     if (mounted) {
       Navigator.of(context).pop(newProject);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Project created successfully!'),
+        SnackBar(
+          content: Text(
+            _selectedCollaboratorIds.isEmpty
+                ? 'Project created successfully!'
+                : 'Project created with ${_selectedCollaboratorIds.length} team members!',
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -158,6 +176,175 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
     );
   }
 
+  // NEW: Show collaborator selection
+  void _showCollaboratorSelection() {
+    final tempSelected = List<String>.from(_selectedCollaboratorIds);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Add Team Members',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedCollaboratorIds = tempSelected;
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        'Done (${tempSelected.length})',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Divider(height: 1),
+
+              // Search bar
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search friends...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Friends list
+              Expanded(
+                child: _allFriends.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.people_outline,
+                                size: 64, color: Colors.grey[400]),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No friends yet',
+                              style: TextStyle(
+                                  fontSize: 16, color: Colors.grey[600]),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Add friends from Collaborators page',
+                              style: TextStyle(
+                                  fontSize: 14, color: Colors.grey[500]),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _allFriends.length,
+                        itemBuilder: (context, index) {
+                          final friend = _allFriends[index];
+                          final isSelected = tempSelected.contains(friend.id);
+
+                          return CheckboxListTile(
+                            value: isSelected,
+                            onChanged: (checked) {
+                              setModalState(() {
+                                if (checked == true) {
+                                  tempSelected.add(friend.id);
+                                } else {
+                                  tempSelected.remove(friend.id);
+                                }
+                              });
+                            },
+                            secondary: CircleAvatar(
+                              backgroundColor: const Color(0xFF2196F3),
+                              child: Text(
+                                friend.initials,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              friend.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              friend.email,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            activeColor: const Color(0xFF2196F3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -206,7 +393,7 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
               // Form Section
               Expanded(
                 child: Container(
-                  margin: const EdgeInsets.only(top: 20),
+                  margin: const EdgeInsets.only(top: 5),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.vertical(
@@ -214,7 +401,7 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                     ),
                   ),
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(20.0),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -222,9 +409,10 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                         children: [
                           // Name Section (on gradient background)
                           Transform.translate(
-                            offset: const Offset(0, -80),
+                            offset: const Offset(0, -15),
                             child: Container(
                               padding: const EdgeInsets.all(20),
+                              margin: const EdgeInsets.only(bottom: 24),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
@@ -308,9 +496,9 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                             ),
                           ),
 
-                          // Date Created (Auto-filled)
+                          // Date Created + Description
                           Transform.translate(
-                            offset: const Offset(0, -60),
+                            offset: const Offset(0, -30),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -368,9 +556,151 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                             ),
                           ),
 
+                          // NEW: Collaborators Section
+                          Transform.translate(
+                            offset: const Offset(0, -10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Team Members (Optional)',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: _showCollaboratorSelection,
+                                      icon: const Icon(Icons.person_add,
+                                          size: 18),
+                                      label: Text(
+                                        _selectedCollaboratorIds.isEmpty
+                                            ? 'Add Members'
+                                            : 'Edit Members',
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor:
+                                            const Color(0xFF2196F3),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+
+                                // Selected collaborators display
+                                if (_selectedCollaboratorIds.isEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border:
+                                          Border.all(color: Colors.grey[300]!),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.people_outline,
+                                            color: Colors.grey[400]),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'No team members added',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue[50],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border:
+                                          Border.all(color: Colors.blue[200]!),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.group,
+                                                color: Color(0xFF2196F3),
+                                                size: 20),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '${_selectedCollaboratorIds.length} team ${_selectedCollaboratorIds.length == 1 ? 'member' : 'members'} added',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF2196F3),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: _selectedCollaboratorIds
+                                              .map((id) {
+                                            final user =
+                                                MockUsers.getUserById(id);
+                                            if (user == null)
+                                              return const SizedBox();
+
+                                            return Chip(
+                                              avatar: CircleAvatar(
+                                                backgroundColor:
+                                                    const Color(0xFF2196F3),
+                                                child: Text(
+                                                  user.initials,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              label: Text(user.name),
+                                              deleteIcon: const Icon(
+                                                  Icons.close,
+                                                  size: 16),
+                                              onDeleted: () {
+                                                setState(() {
+                                                  _selectedCollaboratorIds
+                                                      .remove(id);
+                                                });
+                                              },
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Add team members to collaborate on this project',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
                           // Pick a color
                           Transform.translate(
-                            offset: const Offset(0, -40),
+                            offset: const Offset(0, -10),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -460,7 +790,7 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
 
                           // Create Button
                           Transform.translate(
-                            offset: const Offset(0, -20),
+                            offset: const Offset(0, 10),
                             child: ElevatedButton(
                               onPressed:
                                   _isLoading ? null : _handleCreateProject,

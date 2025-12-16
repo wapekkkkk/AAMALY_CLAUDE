@@ -50,7 +50,6 @@ class _LoginPageState extends State<LoginPage> {
 
     if (result['success']) {
       if (mounted) {
-        // Navigate to task list page
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const DashboardPage(),
@@ -83,31 +82,29 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 const SizedBox(height: 40),
 
-                // Logo/Icon
-                Container(
-                  height: 120,
-                  width: 120,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.task_alt,
-                    size: 60,
-                    color: Color(0xFF2196F3),
+                // Logo (REPLACE ICON HERE)
+                Center(
+                  child: Container(
+                    height: 200,
+                    width: 200,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0), // controls logo size
+                      child: Image.asset(
+                        'assets/images/logoaamaly.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 24),
 
                 // App Name
-                const Text(
-                  'Aamaly',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2196F3),
+                Center(
+                  child: Image.asset(
+                    'assets/images/logonamaaamaly.png',
+                    height: 60, // adjust size
+                    fit: BoxFit.contain,
                   ),
                 ),
 

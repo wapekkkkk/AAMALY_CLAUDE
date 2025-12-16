@@ -14,6 +14,7 @@ class Task {
   final TaskStatus status;
   final TaskPriority priority;
   final String projectName;
+  final String? assignedToUserId;
 
   Task({
     required this.id,
@@ -23,6 +24,7 @@ class Task {
     required this.status,
     required this.priority,
     required this.projectName,
+    this.assignedToUserId,
   });
 
   // Helper methods

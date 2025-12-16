@@ -16,6 +16,8 @@ class Project {
   final int inProgressTasks;
   final Color color; // NEW: Project color
   final String description; // NEW: Project description
+  final String ownerId; // ADD THIS
+  final List<String> collaboratorIds; // ADD THIS
 
   Project({
     required this.id,
@@ -28,7 +30,13 @@ class Project {
     required this.inProgressTasks,
     this.color = const Color(0xFF7B68EE), // Default purple
     this.description = '',
+    required this.ownerId, // ADD THIS
+    this.collaboratorIds = const [], // ADD THIS with default empty list
   });
+
+  bool get hasCollaborators => collaboratorIds.isNotEmpty;
+  bool get isSolo => collaboratorIds.isEmpty;
+  bool isOwner(String userId) => ownerId == userId;
 
   int get todoTasks => totalTasks - completedTasks - inProgressTasks;
 
@@ -43,6 +51,8 @@ class Project {
     int? inProgressTasks,
     Color? color,
     String? description,
+    String? ownerId, // ADD THIS
+    List<String>? collaboratorIds, // ADD THIS
   }) {
     return Project(
       id: id ?? this.id,
@@ -55,6 +65,8 @@ class Project {
       inProgressTasks: inProgressTasks ?? this.inProgressTasks,
       color: color ?? this.color,
       description: description ?? this.description,
+      ownerId: ownerId ?? this.ownerId, // ADD THIS
+      collaboratorIds: collaboratorIds ?? this.collaboratorIds, // ADD THIS
     );
   }
 }

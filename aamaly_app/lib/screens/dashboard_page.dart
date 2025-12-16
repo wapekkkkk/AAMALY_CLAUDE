@@ -17,6 +17,8 @@ import 'project_detail_page.dart';
 import 'calendar_page.dart';
 import 'create_project_page.dart';
 import 'search_page.dart';
+import 'collaborators_page.dart';
+import '../data/mock_users.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -80,9 +82,10 @@ class _DashboardPageState extends State<DashboardPage> {
       case 2: // Add New
         _showAddNewDialog();
         break;
-      case 3: // Notifications
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notifications coming soon!')),
+      case 3: // Collaborators (CHANGED from Notifications)
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CollaboratorsPage()),
         );
         break;
       case 4: // Search
@@ -238,7 +241,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
             // Project Cards (Horizontal Scroll)
             SizedBox(
-              height: 180,
+              height: 200,
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 scrollDirection: Axis.horizontal,
@@ -411,20 +414,44 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child:
-                      const Icon(Icons.school, color: Colors.white, size: 20),
+                // Project Icon + Group Badge
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.school,
+                          color: Colors.white, size: 20),
+                    ),
+                    // Group Icon Badge (shows if collaborative)
+                    if (project.hasCollaborators)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.group,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const Spacer(),
                 Icon(Icons.more_vert, color: Colors.white.withOpacity(0.8)),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               project.name,
               style: const TextStyle(
@@ -435,7 +462,7 @@ class _DashboardPageState extends State<DashboardPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             ...project.taskTypes.map((type) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(
@@ -451,6 +478,59 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 )),
             const Spacer(),
+
+            // ✨ FIXED: Show collaborator avatars if project has team members
+            if (project.hasCollaborators)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    // Avatar Stack (show first 3) - FIXED positioning
+                    ...List.generate(
+                      project.collaboratorIds.length > 3
+                          ? 3
+                          : project.collaboratorIds.length,
+                      (i) {
+                        final userId = project.collaboratorIds[i];
+                        final user = MockUsers.getUserById(userId);
+                        return Transform.translate(
+                          offset: Offset(i * -8.0, 0), // Overlap effect
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: CircleAvatar(
+                              radius: 12,
+                              backgroundColor: Colors.white,
+                              child: Text(
+                                user?.initials ?? '?',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  color: project.color,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    // Member count
+                    Text(
+                      '${project.collaboratorIds.length} ${project.collaboratorIds.length == 1 ? 'member' : 'members'}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.9),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // Progress Bar
             ClipRRect(
@@ -540,14 +620,14 @@ class _DashboardPageState extends State<DashboardPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7B68EE).withOpacity(0.1),
+                    color: const Color(0xFF2196F3).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     task.status == TaskStatus.completed
                         ? Icons.check_circle
                         : Icons.assignment,
-                    color: const Color(0xFF7B68EE),
+                    color: const Color(0xFF2196F3),
                     size: 24,
                   ),
                 ),
@@ -725,22 +805,9 @@ class _DashboardPageState extends State<DashboardPage> {
             label: 'Add',
           ),
           BottomNavigationBarItem(
-            icon: Stack(
-              children: [
-                Icon(Icons.notifications, size: 28),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: CircleAvatar(
-                    radius: 8,
-                    backgroundColor: Colors.red,
-                    child: Text('2',
-                        style: TextStyle(fontSize: 10, color: Colors.white)),
-                  ),
-                ),
-              ],
-            ),
-            label: 'Notifications',
+            icon: Icon(Icons.people,
+                size: 28), // CHANGED from notifications to people
+            label: 'Team', // CHANGED label
           ),
           BottomNavigationBarItem(
               icon: Icon(Icons.search, size: 28), label: 'Search'),

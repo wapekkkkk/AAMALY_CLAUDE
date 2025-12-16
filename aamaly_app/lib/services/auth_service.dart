@@ -70,6 +70,7 @@ class AuthService {
       id: userMap['id'],
       name: userMap['name'],
       email: userMap['email'],
+      qrCode: userMap['id'],
     );
 
     _userController.add(_currentUser);
@@ -160,6 +161,7 @@ class AuthService {
       id: newUser['id']!,
       name: newUser['name']!,
       email: newUser['email']!,
+      qrCode: newUser['id']!,
     );
 
     _userController.add(_currentUser);

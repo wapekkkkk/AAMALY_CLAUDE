@@ -1,21 +1,93 @@
 // ============================================
-// FILE: lib/screens/task_detail_page.dart
+// FILE: lib/screens/task_detail_page.dart (UPDATED)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../utils/task_helper.dart';
+import '../widgets/edit_task_bottom_sheet.dart';
 
-class TaskDetailPage extends StatelessWidget {
+class TaskDetailPage extends StatefulWidget {
   final Task task;
 
   const TaskDetailPage({super.key, required this.task});
 
   @override
+  State<TaskDetailPage> createState() => _TaskDetailPageState();
+}
+
+class _TaskDetailPageState extends State<TaskDetailPage> {
+  late Task _currentTask;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTask = widget.task;
+  }
+
+  void _showEditBottomSheet() async {
+    final updatedTask = await showModalBottomSheet<Task>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.9,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, controller) => EditTaskBottomSheet(task: _currentTask),
+        ),
+      ),
+    );
+
+    if (updatedTask != null) {
+      setState(() {
+        _currentTask = updatedTask;
+      });
+    }
+  }
+
+  void _showDeleteConfirmation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Task'),
+        content: const Text('Are you sure you want to delete this task?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      Navigator.pop(context, 'delete');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Task deleted successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('EEEE, MMMM dd, yyyy');
-    final isOverdue = task.isOverdue;
+    final isOverdue = _currentTask.isOverdue;
 
     return Scaffold(
       appBar: AppBar(
@@ -23,49 +95,37 @@ class TaskDetailPage extends StatelessWidget {
         backgroundColor: const Color(0xFF2196F3),
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Edit feature coming soon!')),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete Task'),
-                  content:
-                      const Text('Are you sure you want to delete this task?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-              );
-
-              if (confirmed == true && context.mounted) {
-                Navigator.pop(context, 'delete');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Task deleted successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'edit') {
+                _showEditBottomSheet();
+              } else if (value == 'delete') {
+                _showDeleteConfirmation();
               }
             },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, size: 20),
+                    SizedBox(width: 12),
+                    Text('Edit'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 20, color: Colors.red),
+                    SizedBox(width: 12),
+                    Text('Delete', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -77,11 +137,12 @@ class TaskDetailPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: TaskHelper.getStatusColor(task.status).withOpacity(0.1),
+                color: TaskHelper.getStatusColor(_currentTask.status)
+                    .withOpacity(0.1),
                 border: Border(
                   bottom: BorderSide(
-                    color:
-                        TaskHelper.getStatusColor(task.status).withOpacity(0.3),
+                    color: TaskHelper.getStatusColor(_currentTask.status)
+                        .withOpacity(0.3),
                     width: 2,
                   ),
                 ),
@@ -96,16 +157,16 @@ class TaskDetailPage extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: TaskHelper.getStatusColor(task.status),
+                      color: TaskHelper.getStatusColor(_currentTask.status),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          task.status == TaskStatus.completed
+                          _currentTask.status == TaskStatus.completed
                               ? Icons.check_circle
-                              : task.status == TaskStatus.inProgress
+                              : _currentTask.status == TaskStatus.inProgress
                                   ? Icons.pending
                                   : Icons.circle_outlined,
                           size: 16,
@@ -113,7 +174,7 @@ class TaskDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          TaskHelper.getStatusText(task.status),
+                          TaskHelper.getStatusText(_currentTask.status),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -128,7 +189,7 @@ class TaskDetailPage extends StatelessWidget {
 
                   // Task Title
                   Text(
-                    task.title,
+                    _currentTask.title,
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -148,8 +209,9 @@ class TaskDetailPage extends StatelessWidget {
                   _buildInfoRow(
                     icon: Icons.flag,
                     label: 'Priority',
-                    value: TaskHelper.getPriorityText(task.priority),
-                    valueColor: TaskHelper.getPriorityColor(task.priority),
+                    value: TaskHelper.getPriorityText(_currentTask.priority),
+                    valueColor:
+                        TaskHelper.getPriorityColor(_currentTask.priority),
                     showBadge: true,
                   ),
 
@@ -159,7 +221,7 @@ class TaskDetailPage extends StatelessWidget {
                   _buildInfoRow(
                     icon: Icons.folder_outlined,
                     label: 'Project',
-                    value: task.projectName,
+                    value: _currentTask.projectName,
                   ),
 
                   const Divider(height: 32),
@@ -168,7 +230,7 @@ class TaskDetailPage extends StatelessWidget {
                   _buildInfoRow(
                     icon: Icons.calendar_today,
                     label: 'Deadline',
-                    value: dateFormat.format(task.deadline),
+                    value: dateFormat.format(_currentTask.deadline),
                     valueColor: isOverdue ? Colors.red : null,
                   ),
 
@@ -192,7 +254,7 @@ class TaskDetailPage extends StatelessWidget {
                                 size: 16, color: Colors.red),
                             const SizedBox(width: 6),
                             Text(
-                              'Overdue by ${task.daysUntilDeadline.abs()} day(s)',
+                              'Overdue by ${_currentTask.daysUntilDeadline.abs()} day(s)',
                               style: const TextStyle(
                                 color: Colors.red,
                                 fontWeight: FontWeight.bold,
@@ -204,11 +266,11 @@ class TaskDetailPage extends StatelessWidget {
                       ),
                     ),
 
-                  if (!isOverdue && task.status != TaskStatus.completed)
+                  if (!isOverdue && _currentTask.status != TaskStatus.completed)
                     Padding(
                       padding: const EdgeInsets.only(left: 40, top: 8),
                       child: Text(
-                        '${task.daysUntilDeadline} day(s) remaining',
+                        '${_currentTask.daysUntilDeadline} day(s) remaining',
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 13,
@@ -236,7 +298,7 @@ class TaskDetailPage extends StatelessWidget {
                       border: Border.all(color: Colors.grey[300]!),
                     ),
                     child: Text(
-                      task.description,
+                      _currentTask.description,
                       style: TextStyle(
                         fontSize: 15,
                         height: 1.5,
@@ -260,7 +322,7 @@ class TaskDetailPage extends StatelessWidget {
                             size: 16, color: Colors.blue[700]),
                         const SizedBox(width: 8),
                         Text(
-                          'Task ID: ${task.id}',
+                          'Task ID: ${_currentTask.id}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.blue[700],

@@ -37,7 +37,7 @@ class _CreateReminderPageState extends State<CreateReminderPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF7B68EE),
+              primary: Color(0xFFFF69B4),
             ),
           ),
           child: child!,
@@ -105,7 +105,7 @@ class _CreateReminderPageState extends State<CreateReminderPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF7B68EE), Color(0xFFB19EFF)],
+            colors: [Color(0xFFFF69B4), Color(0xFFB19EFF)],
             begin: Alignment.topCenter,
             end: Alignment.center,
           ),
@@ -166,7 +166,7 @@ class _CreateReminderPageState extends State<CreateReminderPage> {
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
                                   colors: [
-                                    Color(0xFF7B68EE),
+                                    Color(0xFFFF69B4),
                                     Color(0xFFB19EFF)
                                   ],
                                 ),
@@ -340,7 +340,7 @@ class _CreateReminderPageState extends State<CreateReminderPage> {
                               onPressed:
                                   _isLoading ? null : _handleCreateReminder,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF7B68EE),
+                                backgroundColor: const Color(0xFFFF69B4),
                                 foregroundColor: Colors.white,
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 16),

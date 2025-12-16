@@ -71,7 +71,7 @@ class _CalendarPageState extends State<CalendarPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF7B68EE),
+              primary: Color(0xFF2196F3),
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black,
@@ -138,12 +138,12 @@ class _CalendarPageState extends State<CalendarPage> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF7B68EE).withOpacity(0.1),
+                        color: const Color(0xFF2196F3).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
                         Icons.calendar_month,
-                        color: Color(0xFF7B68EE),
+                        color: Color(0xFF2196F3),
                         size: 24,
                       ),
                     ),
@@ -301,7 +301,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color:
-                        isSelected ? const Color(0xFF7B68EE) : Colors.grey[600],
+                        isSelected ? const Color(0xFF2196F3) : Colors.grey[600],
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -315,9 +315,9 @@ class _CalendarPageState extends State<CalendarPage> {
                       height: 40,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF7B68EE)
+                            ? const Color(0xFF2196F3)
                             : isToday
-                                ? const Color(0xFF7B68EE).withOpacity(0.1)
+                                ? const Color(0xFF2196F3).withOpacity(0.1)
                                 : Colors.transparent,
                         shape: BoxShape.circle,
                       ),
@@ -330,7 +330,7 @@ class _CalendarPageState extends State<CalendarPage> {
                           color: isSelected
                               ? Colors.white
                               : isToday
-                                  ? const Color(0xFF7B68EE)
+                                  ? const Color(0xFF2196F3)
                                   : Colors.black,
                         ),
                       ),
@@ -414,7 +414,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7B68EE).withOpacity(0.1),
+                    color: const Color(0xFF2196F3).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -422,7 +422,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF7B68EE),
+                      color: Color(0xFF2196F3),
                     ),
                   ),
                 ),
