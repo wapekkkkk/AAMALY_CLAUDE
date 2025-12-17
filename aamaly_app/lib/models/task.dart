@@ -1,6 +1,7 @@
 // ============================================
 // FILE: lib/models/task.dart
 // ============================================
+import 'file_attachment.dart';
 
 enum TaskStatus { todo, inProgress, completed }
 
@@ -15,6 +16,7 @@ class Task {
   final TaskPriority priority;
   final String projectName;
   final String? assignedToUserId;
+  final List<FileAttachment> attachments;
 
   Task({
     required this.id,
@@ -25,6 +27,7 @@ class Task {
     required this.priority,
     required this.projectName,
     this.assignedToUserId,
+    this.attachments = const [],
   });
 
   // Helper methods
