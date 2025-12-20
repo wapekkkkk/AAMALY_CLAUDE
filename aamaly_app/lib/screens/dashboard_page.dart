@@ -19,6 +19,7 @@ import 'create_project_page.dart';
 import 'search_page.dart';
 import 'collaborators_page.dart';
 import '../data/mock_users.dart';
+import '../services/firebase_auth_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -209,11 +210,23 @@ class _DashboardPageState extends State<DashboardPage> {
                         );
 
                         if (confirmed == true && mounted) {
-                          await _authService.logout();
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                                builder: (context) => const LoginPage()),
-                          );
+                          try {
+                            await FirebaseAuthService().logout();
+
+                            // Clear all routes and go to login
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                  builder: (context) => const LoginPage()),
+                              (route) => false,
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Logout failed: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         }
                       },
                     ),

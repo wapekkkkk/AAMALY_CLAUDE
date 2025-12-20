@@ -1,11 +1,22 @@
 // ============================================
-// FILE: lib/main.dart
+// FILE: lib/main.dart (UPDATED WITH FIREBASE)
 // ============================================
 
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'screens/login_page.dart';
+import 'screens/firebase_test_page.dart';
 
-void main() {
+void main() async {
+  // Ensure Flutter is initialized
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const AamalyApp());
 }
 

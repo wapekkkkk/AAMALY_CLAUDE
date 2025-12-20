@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "706814716072",
+    "project_id": "aamaly-fyp-31b81",
+    "storage_bucket": "aamaly-fyp-31b81.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:706814716072:android:a8d36674dbd7bba6eaba9d",
+        "android_client_info": {
+          "package_name": "com.aamaly.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvyWW4z_7lsnIesBuIXLV2Csc_ttFSnko"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
