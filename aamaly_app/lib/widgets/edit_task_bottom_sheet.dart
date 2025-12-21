@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../models/project.dart';
 import '../data/mock_projects.dart';
+import '../services/task_service.dart'; // ✅ ADD THIS
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADD THIS (for Timestamp)
 
 class EditTaskBottomSheet extends StatefulWidget {
   final Task task;
@@ -29,6 +31,7 @@ class _EditTaskBottomSheetState extends State<EditTaskBottomSheet> {
 
   bool _isLoading = false;
   List<Project> _availableProjects = [];
+  final _taskService = TaskService(); // ✅ ADD THIS
 
   @override
   void initState() {
@@ -86,32 +89,58 @@ class _EditTaskBottomSheetState extends State<EditTaskBottomSheet> {
       _isLoading = true;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Create updated task object
-    final updatedTask = Task(
-      id: widget.task.id,
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
-      deadline: _selectedDeadline,
-      status: _selectedStatus,
-      priority: _selectedPriority,
-      projectName: _selectedProjectName,
-    );
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (mounted) {
-      Navigator.of(context).pop(updatedTask);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Task updated successfully!'),
-          backgroundColor: Colors.green,
-        ),
+    try {
+      // ✅ UPDATE FIREBASE
+      await _taskService.updateTask(
+        widget.task.id,
+        {
+          'title': _titleController.text.trim(),
+          'description': _descriptionController.text.trim(),
+          'deadline': Timestamp.fromDate(_selectedDeadline),
+          'status': TaskService.taskStatusToString(_selectedStatus),
+          'priority': TaskService.taskPriorityToString(_selectedPriority),
+          'projectName': _selectedProjectName,
+        },
       );
+
+      // Create updated task object
+      final updatedTask = Task(
+        id: widget.task.id,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        deadline: _selectedDeadline,
+        status: _selectedStatus,
+        priority: _selectedPriority,
+        projectName: _selectedProjectName,
+        assignedToUserId: widget.task.assignedToUserId,
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        Navigator.of(context).pop(updatedTask);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Task updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update task: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

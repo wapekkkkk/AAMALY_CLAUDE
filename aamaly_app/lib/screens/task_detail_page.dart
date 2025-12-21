@@ -12,6 +12,7 @@ import '../data/mock_files.dart';
 import '../data/mock_users.dart';
 import '../models/project.dart';
 import '../data/mock_projects.dart';
+import '../services/task_service.dart';
 
 class TaskDetailPage extends StatefulWidget {
   final Task task;
@@ -104,9 +105,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete'),
           ),
         ],
@@ -114,13 +113,48 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
 
     if (confirmed == true && mounted) {
-      Navigator.pop(context, 'delete');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Task deleted successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      try {
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+
+        // ✅ ACTUALLY DELETE FROM FIREBASE
+        await TaskService().deleteTask(_currentTask.id);
+
+        // Close loading dialog
+        if (mounted) Navigator.pop(context);
+
+        // Close task detail page
+        if (mounted) Navigator.pop(context, 'delete');
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Task deleted successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        // Close loading dialog
+        if (mounted) Navigator.pop(context);
+
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete task: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 

@@ -1,12 +1,15 @@
 // ============================================
-// FILE: lib/screens/project_detail_page.dart
+// FILE: lib/screens/project_detail_page.dart (UPDATED WITH STREAMBUILDER)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADD THIS
 import '../models/project.dart';
 import '../models/task.dart';
-import '../data/mock_data.dart';
+import '../services/task_service.dart';
+import '../services/project_service.dart';
+import '../widgets/edit_project_bottom_sheet.dart';
 import 'task_detail_page.dart';
 import 'create_task_page.dart';
 
@@ -20,232 +23,300 @@ class ProjectDetailPage extends StatefulWidget {
 }
 
 class _ProjectDetailPageState extends State<ProjectDetailPage> {
-  late List<Task> projectTasks;
-
-  @override
-  void initState() {
-    super.initState();
-    // Filter tasks by project name
-    projectTasks = MockData.getTasks()
-        .where((task) =>
-            task.projectName == widget.project.code ||
-            task.projectName == widget.project.name)
-        .toList();
-  }
-
-  void _toggleTaskCompletion(Task task) {
-    setState(() {
-      final index = projectTasks.indexWhere((t) => t.id == task.id);
-      if (index != -1) {
-        // Toggle between completed and in-progress
-        final newStatus = task.status == TaskStatus.completed
-            ? TaskStatus.inProgress
-            : TaskStatus.completed;
-
-        projectTasks[index] = Task(
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          deadline: task.deadline,
-          status: newStatus,
-          priority: task.priority,
-          projectName: task.projectName,
-        );
-      }
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          task.status == TaskStatus.completed
-              ? 'Task marked as in progress!'
-              : 'Task marked as done!',
-        ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  double get _progressPercentage {
-    if (projectTasks.isEmpty) return 0.0;
-    final completedCount =
-        projectTasks.where((t) => t.status == TaskStatus.completed).length;
-    return completedCount / projectTasks.length;
-  }
+  final TaskService _taskService = TaskService();
+  final ProjectService _projectService = ProjectService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // ✅ ADD THIS
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: widget.project.color,
+        foregroundColor: Colors.white,
+        elevation: 0, // Remove shadow
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'edit') {
+                _showEditProjectDialog();
+              } else if (value == 'delete') {
+                _showDeleteProjectDialog();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, size: 20),
+                    SizedBox(width: 12),
+                    Text('Edit Project'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 20, color: Colors.red),
+                    SizedBox(width: 12),
+                    Text('Delete Project', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Project Header Card
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    widget.project.color,
-                    widget.project.color.withOpacity(0.7)
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF7B68EE).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+          // Project Header (Flat Design - Icon + Name, same as image)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            decoration: BoxDecoration(
+              color: widget.project.color,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.school,
-                            color: Colors.white, size: 24),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon + Name Row
+                Row(
+                  children: [
+                    // Project Icon
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          widget.project.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                      child: Icon(
+                        Icons.folder,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Project Name
+                    Expanded(
+                      child: Text(
+                        widget.project.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // Stat Cards Row - Real-time updates
+                StreamBuilder<DocumentSnapshot>(
+                  stream: _firestore
+                      .collection('projects')
+                      .doc(widget.project.id)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    // Extract data from snapshot
+                    int totalTasks = widget.project.totalTasks;
+                    int completedTasks = widget.project.completedTasks;
+                    int inProgressTasks = widget.project.inProgressTasks;
+
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>;
+                      totalTasks = data['totalTasks'] ?? 0;
+                      completedTasks = data['completedTasks'] ?? 0;
+                      inProgressTasks = data['inProgressTasks'] ?? 0;
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            Icons.assignment_outlined,
+                            totalTasks.toString(),
+                            'Total Tasks',
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Task Types
-                  ...widget.project.taskTypes.map((type) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.circle,
-                                size: 6, color: Colors.white),
-                            const SizedBox(width: 8),
-                            Text(
-                              type,
-                              style: const TextStyle(
-                                  fontSize: 14, color: Colors.white),
-                            ),
-                          ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            Icons.check_circle_outline,
+                            completedTasks.toString(),
+                            'Completed',
+                          ),
                         ),
-                      )),
-
-                  const SizedBox(height: 16),
-
-                  Text(
-                    'Date Created ${DateFormat('MMMM d, yyyy').format(widget.project.dateCreated)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.8),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Progress Bar
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: _progressPercentage,
-                      backgroundColor: Colors.white.withOpacity(0.3),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.pinkAccent),
-                      minHeight: 8,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${(_progressPercentage * 100).toStringAsFixed(0)}% Complete',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.9),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            Icons.pending_outlined,
+                            inProgressTasks.toString(),
+                            'In Progress',
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ),
           ),
 
-          // Task List
+          // Tasks Section Header
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Tasks',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CreateTaskPage(
+                          lockedProjectName: widget.project.name,
+                          lockedProjectCode: widget.project.code,
+                          project: widget.project,
+                        ),
+                      ),
+                    );
+
+                    // Task is automatically added via StreamBuilder
+                    // No need to manually refresh!
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Task'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.project.color,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ✅ REAL-TIME TASK LIST WITH STREAMBUILDER
           Expanded(
-            child: projectTasks.isEmpty
-                ? Center(
+            child: StreamBuilder<List<Task>>(
+              stream: _taskService.getProjectTasks(widget.project.id),
+              builder: (context, snapshot) {
+                // Loading state
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                // Error state
+                if (snapshot.hasError) {
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+                        Icon(Icons.error_outline,
+                            size: 64, color: Colors.red[300]),
                         const SizedBox(height: 16),
                         Text(
-                          'No tasks in this project',
+                          'Error loading tasks',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
                             color: Colors.grey[600],
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: _addNewTask,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add First Task'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF7B68EE),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
+                        const SizedBox(height: 8),
+                        Text(
+                          snapshot.error.toString(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // Get tasks from snapshot
+                final tasks = snapshot.data ?? [];
+
+                // Empty state
+                if (tasks.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.assignment_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No tasks yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Create your first task to get started!',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
                           ),
                         ),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: projectTasks.length,
-                    itemBuilder: (context, index) {
-                      final task = projectTasks[index];
-                      return _buildExpandedTaskCard(task);
-                    },
-                  ),
+                  );
+                }
+
+                // Task list
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    final task = tasks[index];
+                    return _buildTaskCard(task);
+                  },
+                );
+              },
+            ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewTask,
-        backgroundColor: const Color(0xFF2196F3),
-        child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildExpandedTaskCard(Task task) {
+  // Build task card widget (same design as dashboard)
+  Widget _buildTaskCard(Task task) {
     final isCompleted = task.status == TaskStatus.completed;
     final daysUntil = task.deadline.difference(DateTime.now()).inDays;
 
@@ -276,7 +347,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -292,20 +363,20 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row
+            // Header Row with Icon
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7B68EE).withOpacity(0.1),
+                    color: widget.project.color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     task.status == TaskStatus.completed
                         ? Icons.check_circle
-                        : Icons.assignment,
-                    color: const Color(0xFF7B68EE),
+                        : Icons.assignment_outlined,
+                    color: widget.project.color,
                     size: 24,
                   ),
                 ),
@@ -319,12 +390,15 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          decoration:
-                              isCompleted ? TextDecoration.lineThrough : null,
+                          decoration: isCompleted
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
                           color: isCompleted
                               ? Colors.grey
                               : const Color(0xFF1A1A2E),
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -346,7 +420,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
             const SizedBox(height: 12),
 
-            // Tags Row
+            // Status and Priority Badges
             Row(
               children: [
                 Container(
@@ -366,60 +440,13 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    widget.project.code,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                ),
+                _buildPriorityBadge(task.priority),
               ],
             ),
 
             const SizedBox(height: 12),
 
-            // Description
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Description:',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    task.description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[800],
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Toggle Completion Button
-            const SizedBox(height: 12),
+            // Mark as Done Button
             Align(
               alignment: Alignment.centerRight,
               child: OutlinedButton(
@@ -431,6 +458,8 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),
                 child: Text(
                   isCompleted ? 'Mark as In Progress' : 'Mark as Done',
@@ -445,21 +474,239 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     );
   }
 
-  void _addNewTask() async {
-    final newTask = await Navigator.push<Task>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateTaskPage(
-          lockedProjectName: widget.project.name,
-          lockedProjectCode: widget.project.code,
+  // Toggle task completion
+  Future<void> _toggleTaskCompletion(Task task) async {
+    try {
+      if (task.status == TaskStatus.completed) {
+        await TaskService().markAsInProgress(task.id);
+      } else {
+        await TaskService().markAsComplete(task.id);
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            task.status == TaskStatus.completed
+                ? 'Task marked as in progress!'
+                : 'Task marked as done!',
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Build stat card widget
+  Widget _buildStatCard(IconData icon, String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: Colors.white,
+            size: 28,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 12,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build priority badge
+  Widget _buildPriorityBadge(TaskPriority priority) {
+    Color color;
+    String label;
+
+    switch (priority) {
+      case TaskPriority.high:
+        color = Colors.red;
+        label = 'High';
+        break;
+      case TaskPriority.medium:
+        color = Colors.orange;
+        label = 'Medium';
+        break;
+      case TaskPriority.low:
+        color = Colors.green;
+        label = 'Low';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // Implement edit project dialog
+  void _showEditProjectDialog() async {
+    final updatedProject = await showModalBottomSheet<Project>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.9,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, controller) =>
+              EditProjectBottomSheet(project: widget.project),
         ),
       ),
     );
 
-    if (newTask != null) {
+    if (updatedProject != null) {
+      // Refresh the page with updated project
       setState(() {
-        projectTasks.insert(0, newTask);
+        // The project will be updated via StreamBuilder if you're using it
+        // Or you can navigate back and pass the updated project
       });
+    }
+  }
+
+  // Implement delete project dialog
+  void _showDeleteProjectDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Project'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Are you sure you want to delete "${widget.project.name}"?'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      color: Colors.red[700], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This will also delete all tasks in this project!',
+                      style: TextStyle(
+                        color: Colors.red[700],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+
+        // ✅ ACTUALLY DELETE FROM FIREBASE
+        await ProjectService().deleteProject(widget.project.id);
+
+        // Close loading dialog
+        if (mounted) Navigator.pop(context);
+
+        // Close project detail page and go back to previous screen
+        if (mounted) Navigator.pop(context);
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Project deleted successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        // Close loading dialog
+        if (mounted) Navigator.pop(context);
+
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete project: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 }

@@ -93,10 +93,14 @@ class TaskService {
     return _firestore
         .collection('tasks')
         .where('projectId', isEqualTo: projectId)
-        .orderBy('deadline', descending: false)
+        // .orderBy('deadline', descending: false)  // ⚠️ Commented out temporarily
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => _taskFromFirestore(doc)).toList();
+      // Sort in memory instead
+      final tasks =
+          snapshot.docs.map((doc) => _taskFromFirestore(doc)).toList();
+      tasks.sort((a, b) => a.deadline.compareTo(b.deadline));
+      return tasks;
     });
   }
 

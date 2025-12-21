@@ -9,6 +9,7 @@ import '../models/project.dart';
 import '../data/mock_projects.dart';
 import '../models/user.dart';
 import '../data/mock_users.dart';
+import '../services/project_service.dart'; // ✅ ADD THIS
 import '../services/task_service.dart'; // NEW: Import TaskService
 import '../services/firebase_auth_service.dart'; // NEW: Import Firebase Auth
 
@@ -36,6 +37,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   // NEW: Firebase services
   final _taskService = TaskService();
   final _authService = FirebaseAuthService();
+  final _projectService = ProjectService(); // ✅ ADD THIS
 
   DateTime? _selectedDeadline;
   TaskPriority _selectedPriority = TaskPriority.medium;
@@ -51,11 +53,31 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   @override
   void initState() {
     super.initState();
-    _availableProjects = MockProjects.getProjects();
+    _loadProjects(); // ✅ LOAD FROM FIREBASE
 
     if (widget.lockedProjectName != null) {
       _selectedProjectName =
           widget.lockedProjectCode ?? widget.lockedProjectName;
+    }
+  }
+
+  // ✅ NEW METHOD - Load projects from Firebase
+  Future<void> _loadProjects() async {
+    try {
+      final currentUserId = _authService.currentUserId;
+      if (currentUserId != null) {
+        // Get user's projects as a one-time fetch
+        final projects =
+            await _projectService.getAllUserProjects(currentUserId).first;
+
+        if (mounted) {
+          setState(() {
+            _availableProjects = projects;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading projects: $e');
     }
   }
 
@@ -119,6 +141,27 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         throw Exception('User not authenticated');
       }
 
+      // ✅ NEW CODE - ADD THIS BLOCK HERE (between FIX 1 and FIX 2)
+      // Get the actual project ID
+      String? actualProjectId;
+      if (widget.project != null) {
+        // If project was passed directly, use its ID
+        actualProjectId = widget.project!.id;
+      } else if (_selectedProjectName != null) {
+        // Otherwise, find the project by name/code
+        try {
+          final selectedProject = _availableProjects.firstWhere(
+            (p) =>
+                p.code == _selectedProjectName ||
+                p.name == _selectedProjectName,
+          );
+          actualProjectId = selectedProject.id;
+        } catch (e) {
+          actualProjectId = null; // No project found
+        }
+      }
+      // ✅ END OF NEW CODE
+
       // ✅ FIX 2: Call createTask with your service's parameters
       final taskId = await _taskService.createTask(
         title: _titleController.text.trim(),
@@ -128,7 +171,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         priority: TaskService.taskPriorityToString(_selectedPriority),
         projectName: _selectedProjectName ?? 'No Project',
         createdBy: currentUserId,
-        projectId: null, // Set if you have project ID
+        projectId:
+            actualProjectId, // ✅ CHANGE THIS FROM null to actualProjectId
         assignedToUserId: _assignedToUserId,
       );
 
