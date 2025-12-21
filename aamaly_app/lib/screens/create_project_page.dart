@@ -1,12 +1,13 @@
 // ============================================
-// FILE: lib/screens/create_project_page.dart (UPDATED WITH COLLABORATORS)
+// FILE: lib/screens/create_project_page.dart (UPDATED WITH FIRESTORE)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/project.dart';
-import '../models/user.dart';
+import '../services/project_service.dart';
+import '../services/firebase_auth_service.dart';
 import '../data/mock_users.dart';
+import '../models/user.dart';
 
 class CreateProjectPage extends StatefulWidget {
   const CreateProjectPage({Key? key}) : super(key: key);
@@ -21,16 +22,19 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
   final _codeController = TextEditingController();
   final _descriptionController = TextEditingController();
 
+  final _projectService = ProjectService();
+  final _authService = FirebaseAuthService();
+
   Color _selectedColor = const Color(0xFF2196F3);
   bool _isLoading = false;
 
-  // NEW: Collaborators
+  // Collaborators
   List<User> _allFriends = [];
   List<String> _selectedCollaboratorIds = [];
 
   // Predefined color palette
   final List<Color> _colorPalette = [
-    const Color(0xFF2196F3), // Purple
+    const Color(0xFF2196F3), // Blue
     const Color(0xFFFF69B4), // Pink
     const Color(0xFF00CED1), // Cyan
     const Color(0xFFFFD700), // Gold
@@ -61,44 +65,63 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
       return;
     }
 
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: No user logged in'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
-
-    final newProject = Project(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _nameController.text.trim(),
-      code: _codeController.text.trim(),
-      dateCreated: DateTime.now(),
-      taskTypes: [],
-      totalTasks: 0,
-      completedTasks: 0,
-      inProgressTasks: 0,
-      color: _selectedColor,
-      description: _descriptionController.text.trim(),
-      ownerId: MockUsers.currentUser.id, // NEW: Set owner
-      collaboratorIds: _selectedCollaboratorIds, // NEW: Add collaborators
-    );
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (mounted) {
-      Navigator.of(context).pop(newProject);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _selectedCollaboratorIds.isEmpty
-                ? 'Project created successfully!'
-                : 'Project created with ${_selectedCollaboratorIds.length} team members!',
-          ),
-          backgroundColor: Colors.green,
-        ),
+    try {
+      // Create project in Firestore
+      await _projectService.createProject(
+        name: _nameController.text.trim(),
+        code: _codeController.text.trim(),
+        description: _descriptionController.text.trim(),
+        ownerId: currentUser.id,
+        color: _selectedColor,
+        collaboratorIds: _selectedCollaboratorIds,
+        taskTypes: [], // Empty for now, can be added later
       );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _selectedCollaboratorIds.isEmpty
+                  ? 'Project created successfully!'
+                  : 'Project created with ${_selectedCollaboratorIds.length} team members!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Go back to dashboard
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create project: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -176,7 +199,6 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
     );
   }
 
-  // NEW: Show collaborator selection
   void _showCollaboratorSelection() {
     final tempSelected = List<String>.from(_selectedCollaboratorIds);
 
@@ -193,7 +215,6 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
           ),
           child: Column(
             children: [
-              // Handle bar
               Container(
                 margin: const EdgeInsets.only(top: 12),
                 width: 40,
@@ -203,8 +224,6 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-
-              // Header
               Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Row(
@@ -241,10 +260,7 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                   ],
                 ),
               ),
-
               const Divider(height: 1),
-
-              // Search bar
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: TextField(
@@ -260,8 +276,6 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                   ),
                 ),
               ),
-
-              // Friends list
               Expanded(
                 child: _allFriends.isEmpty
                     ? Center(
@@ -382,10 +396,7 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.search, color: Colors.white),
-                      onPressed: () {},
-                    ),
+                    const SizedBox(width: 48), // Balance the back button
                   ],
                 ),
               ),
@@ -407,7 +418,7 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Name Section (on gradient background)
+                          // Name Section
                           Transform.translate(
                             offset: const Offset(0, -15),
                             child: Container(
@@ -556,7 +567,7 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                             ),
                           ),
 
-                          // NEW: Collaborators Section
+                          // Collaborators Section
                           Transform.translate(
                             offset: const Offset(0, -10),
                             child: Column(
@@ -591,8 +602,6 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-
-                                // Selected collaborators display
                                 if (_selectedCollaboratorIds.isEmpty)
                                   Container(
                                     padding: const EdgeInsets.all(16),
@@ -713,8 +722,6 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-
-                                // Color Grid
                                 Wrap(
                                   spacing: 12,
                                   runSpacing: 12,
@@ -755,8 +762,6 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                                         ),
                                       );
                                     }),
-
-                                    // Color wheel for more colors
                                     GestureDetector(
                                       onTap: _showColorPicker,
                                       child: Container(

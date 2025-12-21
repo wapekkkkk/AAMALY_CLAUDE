@@ -8,10 +8,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user.dart';
 
 class FirebaseAuthService {
+  // Singleton pattern
+  static final FirebaseAuthService _instance = FirebaseAuthService._internal();
+  factory FirebaseAuthService() => _instance;
+  FirebaseAuthService._internal();
   final fb_auth.FirebaseAuth _auth = fb_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   User? _currentUser;
+
+  String? get currentUserId => _auth.currentUser?.uid;
 
   // Get current user
   User? get currentUser => _currentUser;

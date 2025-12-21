@@ -1,14 +1,14 @@
 // ============================================
-// FILE: lib/screens/dashboard_page.dart
+// FILE: lib/screens/dashboard_page.dart (UPDATED WITH REAL FIRESTORE)
 // ============================================
-//try test
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../models/project.dart';
-import '../data/mock_data.dart';
-import '../data/mock_projects.dart';
-import '../services/auth_service.dart';
+import '../services/firebase_auth_service.dart';
+import '../services/project_service.dart';
+import '../services/task_service.dart';
 import 'login_page.dart';
 import 'task_detail_page.dart';
 import 'create_task_page.dart';
@@ -19,7 +19,6 @@ import 'create_project_page.dart';
 import 'search_page.dart';
 import 'collaborators_page.dart';
 import '../data/mock_users.dart';
-import '../services/firebase_auth_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -30,41 +29,11 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
-  String _selectedFilter = 'all'; // all, my_project, in_progress, completed
-  final _authService = AuthService();
+  String _selectedFilter = 'all';
 
-  List<Task> _allTasks = [];
-  List<Project> _allProjects = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _allTasks = MockData.getTasks();
-    _allProjects = MockProjects.getProjects();
-  }
-
-  int get _myProjectCount => _allProjects.length;
-  int get _inProgressCount =>
-      _allTasks.where((t) => t.status == TaskStatus.inProgress).length;
-  int get _completedCount =>
-      _allTasks.where((t) => t.status == TaskStatus.completed).length;
-
-  List<Task> get _filteredTasks {
-    switch (_selectedFilter) {
-      case 'my_project':
-        return _allTasks;
-      case 'in_progress':
-        return _allTasks
-            .where((t) => t.status == TaskStatus.inProgress)
-            .toList();
-      case 'completed':
-        return _allTasks
-            .where((t) => t.status == TaskStatus.completed)
-            .toList();
-      default:
-        return _allTasks;
-    }
-  }
+  final _authService = FirebaseAuthService();
+  final _projectService = ProjectService();
+  final _taskService = TaskService();
 
   void _onNavItemTapped(int index) {
     setState(() {
@@ -83,7 +52,7 @@ class _DashboardPageState extends State<DashboardPage> {
       case 2: // Add New
         _showAddNewDialog();
         break;
-      case 3: // Collaborators (CHANGED from Notifications)
+      case 3: // Collaborators
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const CollaboratorsPage()),
@@ -111,16 +80,11 @@ class _DashboardPageState extends State<DashboardPage> {
               title: const Text('New Task'),
               onTap: () async {
                 Navigator.pop(context);
-                final newTask = await Navigator.push<Task>(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) => const CreateTaskPage()),
                 );
-                if (newTask != null) {
-                  setState(() {
-                    _allTasks.insert(0, newTask);
-                  });
-                }
               },
             ),
             ListTile(
@@ -128,16 +92,11 @@ class _DashboardPageState extends State<DashboardPage> {
               title: const Text('New Project'),
               onTap: () async {
                 Navigator.pop(context);
-                final newProject = await Navigator.push<Project>(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) => const CreateProjectPage()),
                 );
-                if (newProject != null) {
-                  setState(() {
-                    _allProjects.insert(0, newProject);
-                  });
-                }
               },
             ),
           ],
@@ -148,7 +107,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userName = _authService.currentUser?.name.split(' ').first ?? 'User';
+    final currentUser = _authService.currentUser;
+    final userName = currentUser?.name.split(' ').first ?? 'User';
+    final userId = currentUser?.id ?? '';
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -202,7 +163,8 @@ class _DashboardPageState extends State<DashboardPage> {
                               ElevatedButton(
                                 onPressed: () => Navigator.pop(context, true),
                                 style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red),
+                                  backgroundColor: Colors.red,
+                                ),
                                 child: const Text('Logout'),
                               ),
                             ],
@@ -211,12 +173,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
                         if (confirmed == true && mounted) {
                           try {
-                            await FirebaseAuthService().logout();
-
-                            // Clear all routes and go to login
+                            await _authService.logout();
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(
-                                  builder: (context) => const LoginPage()),
+                                builder: (context) => const LoginPage(),
+                              ),
                               (route) => false,
                             );
                           } catch (e) {
@@ -235,35 +196,95 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
 
-            // Filter Tabs
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
-                children: [
-                  _buildFilterTab('My Project', _myProjectCount, 'my_project'),
-                  const SizedBox(width: 12),
-                  _buildFilterTab(
-                      'In-progress', _inProgressCount, 'in_progress'),
-                  const SizedBox(width: 12),
-                  _buildFilterTab('Completed', _completedCount, 'completed'),
-                ],
-              ),
+            // Filter Tabs with Real-time Counts
+            StreamBuilder<List<Task>>(
+              stream: _taskService.getAllUserTasks(userId),
+              builder: (context, snapshot) {
+                final tasks = snapshot.data ?? [];
+                final inProgressCount = tasks
+                    .where((t) => t.status == TaskStatus.inProgress)
+                    .length;
+                final completedCount =
+                    tasks.where((t) => t.status == TaskStatus.completed).length;
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Row(
+                    children: [
+                      _buildFilterTab('My Tasks', tasks.length, 'all'),
+                      const SizedBox(width: 12),
+                      _buildFilterTab(
+                          'In-progress', inProgressCount, 'in_progress'),
+                      const SizedBox(width: 12),
+                      _buildFilterTab('Completed', completedCount, 'completed'),
+                    ],
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 20),
 
-            // Project Cards (Horizontal Scroll)
-            SizedBox(
-              height: 200,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: _allProjects.length,
-                itemBuilder: (context, index) {
-                  final project = _allProjects[index];
-                  return _buildProjectCard(project, index);
-                },
-              ),
+            // Project Cards (Real-time from Firestore)
+            StreamBuilder<List<Project>>(
+              stream: _projectService.getAllUserProjects(userId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 200,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final projects = snapshot.data ?? [];
+
+                if (projects.isEmpty) {
+                  return SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.folder_open,
+                              size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 12),
+                          Text('No projects yet',
+                              style: TextStyle(color: Colors.grey[600])),
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const CreateProjectPage(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('Create Project'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2196F3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: projects.length,
+                    itemBuilder: (context, index) {
+                      return _buildProjectCard(projects[index], index);
+                    },
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 24),
@@ -275,7 +296,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Task',
+                    'Tasks',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -284,7 +305,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   TextButton(
                     onPressed: () {
-                      // Navigate to full task list
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -297,10 +317,36 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
 
-            // Task List
+            // Task List (Real-time from Firestore)
             Expanded(
-              child: _filteredTasks.isEmpty
-                  ? Center(
+              child: StreamBuilder<List<Task>>(
+                stream: _taskService.getAllUserTasks(userId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text('Error: ${snapshot.error}'),
+                    );
+                  }
+
+                  var tasks = snapshot.data ?? [];
+
+                  // Apply filter
+                  if (_selectedFilter == 'in_progress') {
+                    tasks = tasks
+                        .where((t) => t.status == TaskStatus.inProgress)
+                        .toList();
+                  } else if (_selectedFilter == 'completed') {
+                    tasks = tasks
+                        .where((t) => t.status == TaskStatus.completed)
+                        .toList();
+                  }
+
+                  if (tasks.isEmpty) {
+                    return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -311,18 +357,39 @@ class _DashboardPageState extends State<DashboardPage> {
                             style: TextStyle(
                                 fontSize: 16, color: Colors.grey[600]),
                           ),
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const CreateTaskPage(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('Create Task'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2196F3),
+                            ),
+                          ),
                         ],
                       ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount:
-                          _filteredTasks.length > 5 ? 5 : _filteredTasks.length,
-                      itemBuilder: (context, index) {
-                        final task = _filteredTasks[index];
-                        return _buildTaskCard(task);
-                      },
-                    ),
+                    );
+                  }
+
+                  // Show only first 5 tasks
+                  final displayTasks = tasks.take(5).toList();
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: displayTasks.length,
+                    itemBuilder: (context, index) {
+                      return _buildTaskCard(displayTasks[index]);
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -388,7 +455,6 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildProjectCard(Project project, int index) {
-    // Use project's actual color
     final gradientColors = [
       project.color,
       project.color.withOpacity(0.7),
@@ -427,7 +493,6 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             Row(
               children: [
-                // Project Icon + Group Badge
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -440,7 +505,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       child: const Icon(Icons.school,
                           color: Colors.white, size: 20),
                     ),
-                    // Group Icon Badge (shows if collaborative)
                     if (project.hasCollaborators)
                       Positioned(
                         right: -4,
@@ -451,11 +515,8 @@ class _DashboardPageState extends State<DashboardPage> {
                             color: Colors.blue,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.group,
-                            color: Colors.white,
-                            size: 12,
-                          ),
+                          child: const Icon(Icons.group,
+                              color: Colors.white, size: 12),
                         ),
                       ),
                   ],
@@ -476,76 +537,37 @@ class _DashboardPageState extends State<DashboardPage> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
-            ...project.taskTypes.map((type) => Padding(
+            ...project.taskTypes.take(2).map((type) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(
                     children: [
                       const Icon(Icons.circle, size: 6, color: Colors.white),
                       const SizedBox(width: 8),
-                      Text(
-                        type,
-                        style:
-                            const TextStyle(fontSize: 13, color: Colors.white),
+                      Expanded(
+                        child: Text(
+                          type,
+                          style: const TextStyle(
+                              fontSize: 13, color: Colors.white),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
                 )),
             const Spacer(),
-
-            // ✨ FIXED: Show collaborator avatars if project has team members
             if (project.hasCollaborators)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  children: [
-                    // Avatar Stack (show first 3) - FIXED positioning
-                    ...List.generate(
-                      project.collaboratorIds.length > 3
-                          ? 3
-                          : project.collaboratorIds.length,
-                      (i) {
-                        final userId = project.collaboratorIds[i];
-                        final user = MockUsers.getUserById(userId);
-                        return Transform.translate(
-                          offset: Offset(i * -8.0, 0), // Overlap effect
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: CircleAvatar(
-                              radius: 12,
-                              backgroundColor: Colors.white,
-                              child: Text(
-                                user?.initials ?? '?',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  color: project.color,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    // Member count
-                    Text(
-                      '${project.collaboratorIds.length} ${project.collaboratorIds.length == 1 ? 'member' : 'members'}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white.withOpacity(0.9),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  '${project.collaboratorIds.length} ${project.collaboratorIds.length == 1 ? 'member' : 'members'}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-
-            // Progress Bar
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: LinearProgressIndicator(
@@ -568,7 +590,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
             Text(
-              'Date Created ${DateFormat('MMM d, yyyy').format(project.dateCreated)}',
+              'Created ${DateFormat('MMM d, yyyy').format(project.dateCreated)}',
               style: TextStyle(
                 fontSize: 11,
                 color: Colors.white.withOpacity(0.8),
@@ -627,7 +649,6 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row
             Row(
               children: [
                 Container(
@@ -678,10 +699,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 Icon(Icons.more_vert, color: Colors.grey[400]),
               ],
             ),
-
             const SizedBox(height: 12),
-
-            // Tags Row
             Row(
               children: [
                 Container(
@@ -719,8 +737,6 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ],
             ),
-
-            // Toggle Completion Button
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
@@ -749,37 +765,33 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  void _toggleTaskCompletion(Task task) {
-    setState(() {
-      final index = _allTasks.indexWhere((t) => t.id == task.id);
-      if (index != -1) {
-        final newStatus = task.status == TaskStatus.completed
-            ? TaskStatus.inProgress
-            : TaskStatus.completed;
-
-        _allTasks[index] = Task(
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          deadline: task.deadline,
-          status: newStatus,
-          priority: task.priority,
-          projectName: task.projectName,
-        );
+  Future<void> _toggleTaskCompletion(Task task) async {
+    try {
+      if (task.status == TaskStatus.completed) {
+        await _taskService.markAsInProgress(task.id);
+      } else {
+        await _taskService.markAsComplete(task.id);
       }
-    });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          task.status == TaskStatus.completed
-              ? 'Task marked as in progress!'
-              : 'Task marked as done!',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            task.status == TaskStatus.completed
+                ? 'Task marked as in progress!'
+                : 'Task marked as done!',
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
         ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildBottomNavBar() {
@@ -818,10 +830,7 @@ class _DashboardPageState extends State<DashboardPage> {
             label: 'Add',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people,
-                size: 28), // CHANGED from notifications to people
-            label: 'Team', // CHANGED label
-          ),
+              icon: Icon(Icons.people, size: 28), label: 'Team'),
           BottomNavigationBarItem(
               icon: Icon(Icons.search, size: 28), label: 'Search'),
         ],
