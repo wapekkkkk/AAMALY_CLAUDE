@@ -1,5 +1,5 @@
 // ============================================
-// FILE: lib/screens/dashboard_page.dart (UPDATED WITH REAL FIRESTORE)
+// FILE: lib/screens/dashboard_page.dart (UPDATED WITH PROJECT COLORS)
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -317,75 +317,86 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
 
-            // Task List (Real-time from Firestore)
+            // ✅ UPDATED: Task List with NESTED StreamBuilder
             Expanded(
-              child: StreamBuilder<List<Task>>(
-                stream: _taskService.getAllUserTasks(userId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+              child: StreamBuilder<List<Project>>(
+                stream: _projectService.getAllUserProjects(userId),
+                builder: (context, projectSnapshot) {
+                  final projects = projectSnapshot.data ?? [];
 
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text('Error: ${snapshot.error}'),
-                    );
-                  }
+                  return StreamBuilder<List<Task>>(
+                    stream: _taskService.getAllUserTasks(userId),
+                    builder: (context, taskSnapshot) {
+                      if (taskSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                  var tasks = snapshot.data ?? [];
+                      if (taskSnapshot.hasError) {
+                        return Center(
+                          child: Text('Error: ${taskSnapshot.error}'),
+                        );
+                      }
 
-                  // Apply filter
-                  if (_selectedFilter == 'in_progress') {
-                    tasks = tasks
-                        .where((t) => t.status == TaskStatus.inProgress)
-                        .toList();
-                  } else if (_selectedFilter == 'completed') {
-                    tasks = tasks
-                        .where((t) => t.status == TaskStatus.completed)
-                        .toList();
-                  }
+                      var tasks = taskSnapshot.data ?? [];
 
-                  if (tasks.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No tasks found',
-                            style: TextStyle(
-                                fontSize: 16, color: Colors.grey[600]),
-                          ),
-                          const SizedBox(height: 8),
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const CreateTaskPage(),
+                      // Apply filter
+                      if (_selectedFilter == 'in_progress') {
+                        tasks = tasks
+                            .where((t) => t.status == TaskStatus.inProgress)
+                            .toList();
+                      } else if (_selectedFilter == 'completed') {
+                        tasks = tasks
+                            .where((t) => t.status == TaskStatus.completed)
+                            .toList();
+                      }
+
+                      if (tasks.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.inbox,
+                                  size: 64, color: Colors.grey[400]),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No tasks found',
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.grey[600]),
+                              ),
+                              const SizedBox(height: 8),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const CreateTaskPage(),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.add),
+                                label: const Text('Create Task'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2196F3),
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.add),
-                            label: const Text('Create Task'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2196F3),
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  }
+                        );
+                      }
 
-                  // Show only first 5 tasks
-                  final displayTasks = tasks.take(5).toList();
+                      // Show only first 5 tasks
+                      final displayTasks = tasks.take(5).toList();
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: displayTasks.length,
-                    itemBuilder: (context, index) {
-                      return _buildTaskCard(displayTasks[index]);
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: displayTasks.length,
+                        itemBuilder: (context, index) {
+                          // ✅ NOW PASS PROJECTS
+                          return _buildTaskCard(displayTasks[index], projects);
+                        },
+                      );
                     },
                   );
                 },
@@ -602,9 +613,23 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildTaskCard(Task task) {
+  // ✅ UPDATED: Now accepts projects list
+  Widget _buildTaskCard(Task task, List<Project> projects) {
     final isCompleted = task.status == TaskStatus.completed;
     final daysUntil = task.deadline.difference(DateTime.now()).inDays;
+
+    // ✅ GET PROJECT COLOR
+    Project? project;
+    try {
+      project = projects.firstWhere(
+        (p) => p.name == task.projectName || p.code == task.projectName,
+      );
+    } catch (e) {
+      project = null;
+    }
+
+    // ✅ Use project color or default blue
+    final projectColor = project?.color ?? const Color(0xFF2196F3);
 
     Color statusColor;
     String statusLabel;
@@ -651,17 +676,18 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             Row(
               children: [
+                // ✅ ICON WITH PROJECT COLOR
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withOpacity(0.1),
+                    color: projectColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     task.status == TaskStatus.completed
                         ? Icons.check_circle
                         : Icons.assignment,
-                    color: const Color(0xFF2196F3),
+                    color: projectColor,
                     size: 24,
                   ),
                 ),
@@ -702,6 +728,7 @@ class _DashboardPageState extends State<DashboardPage> {
             const SizedBox(height: 12),
             Row(
               children: [
+                // Status badge
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -719,19 +746,20 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // ✅ PROJECT BADGE WITH PROJECT COLOR
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: projectColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     task.projectName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A2E),
+                      color: projectColor,
                     ),
                   ),
                 ),

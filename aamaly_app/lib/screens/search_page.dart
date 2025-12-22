@@ -1,8 +1,15 @@
+// ============================================
+// FILE: lib/screens/search_page.dart (UPDATED WITH FIREBASE)
+// ============================================
+
 import 'package:flutter/material.dart';
 import '../models/task.dart';
-import '../data/mock_data.dart';
 import '../utils/task_helper.dart';
 import 'task_detail_page.dart';
+import '../services/task_service.dart'; // ✅ NEW
+import '../services/firebase_auth_service.dart'; // ✅ NEW
+import '../utils/logger.dart'; // ✅ NEW
+import 'package:intl/intl.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -13,15 +20,18 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final _searchController = TextEditingController();
-  List<Task> _allTasks = [];
-  List<Task> _filteredTasks = [];
+  final _taskService = TaskService(); // ✅ NEW
+  final _authService = FirebaseAuthService(); // ✅ NEW
+
   String _searchQuery = '';
+  TaskStatus? _filterStatus;
+  TaskPriority? _filterPriority;
+  String _sortBy = 'deadline'; // deadline, priority, title
 
   @override
   void initState() {
     super.initState();
-    _allTasks = MockData.getTasks();
-    _filteredTasks = _allTasks; // Show all tasks initially
+    Logger.navigation('Dashboard', 'SearchPage');
   }
 
   @override
@@ -33,25 +43,199 @@ class _SearchPageState extends State<SearchPage> {
   void _performSearch(String query) {
     setState(() {
       _searchQuery = query.toLowerCase();
-
-      if (_searchQuery.isEmpty) {
-        _filteredTasks = _allTasks;
-      } else {
-        _filteredTasks = _allTasks.where((task) {
-          final titleMatch = task.title.toLowerCase().contains(_searchQuery);
-          final descMatch =
-              task.description.toLowerCase().contains(_searchQuery);
-          final projectMatch =
-              task.projectName.toLowerCase().contains(_searchQuery);
-
-          return titleMatch || descMatch || projectMatch;
-        }).toList();
-      }
     });
+  }
+
+  // ✅ Filter and sort tasks
+  List<Task> _filterAndSortTasks(List<Task> allTasks) {
+    // Apply search filter
+    var filtered = allTasks.where((task) {
+      if (_searchQuery.isEmpty) return true;
+
+      final titleMatch = task.title.toLowerCase().contains(_searchQuery);
+      final descMatch = task.description.toLowerCase().contains(_searchQuery);
+      final projectMatch =
+          task.projectName.toLowerCase().contains(_searchQuery);
+
+      return titleMatch || descMatch || projectMatch;
+    }).toList();
+
+    // Apply status filter
+    if (_filterStatus != null) {
+      filtered =
+          filtered.where((task) => task.status == _filterStatus).toList();
+    }
+
+    // Apply priority filter
+    if (_filterPriority != null) {
+      filtered =
+          filtered.where((task) => task.priority == _filterPriority).toList();
+    }
+
+    // Sort
+    switch (_sortBy) {
+      case 'deadline':
+        filtered.sort((a, b) => a.deadline.compareTo(b.deadline));
+        break;
+      case 'priority':
+        filtered.sort((a, b) => b.priority.index.compareTo(a.priority.index));
+        break;
+      case 'title':
+        filtered.sort((a, b) => a.title.compareTo(b.title));
+        break;
+    }
+
+    return filtered;
+  }
+
+  void _showFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Filter & Sort'),
+        content: StatefulBuilder(
+          builder: (context, setDialogState) => SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Status Filter
+                const Text(
+                  'Status',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    FilterChip(
+                      label: const Text('All'),
+                      selected: _filterStatus == null,
+                      onSelected: (selected) {
+                        setDialogState(() => _filterStatus = null);
+                      },
+                    ),
+                    ...TaskStatus.values.map((status) => FilterChip(
+                          label: Text(TaskHelper.getStatusText(status)),
+                          selected: _filterStatus == status,
+                          selectedColor: TaskHelper.getStatusColor(status)
+                              .withOpacity(0.2),
+                          onSelected: (selected) {
+                            setDialogState(
+                                () => _filterStatus = selected ? status : null);
+                          },
+                        )),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Priority Filter
+                const Text(
+                  'Priority',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    FilterChip(
+                      label: const Text('All'),
+                      selected: _filterPriority == null,
+                      onSelected: (selected) {
+                        setDialogState(() => _filterPriority = null);
+                      },
+                    ),
+                    ...TaskPriority.values.map((priority) => FilterChip(
+                          label: Text(TaskHelper.getPriorityText(priority)),
+                          selected: _filterPriority == priority,
+                          selectedColor: TaskHelper.getPriorityColor(priority)
+                              .withOpacity(0.2),
+                          onSelected: (selected) {
+                            setDialogState(() =>
+                                _filterPriority = selected ? priority : null);
+                          },
+                        )),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Sort By
+                const Text(
+                  'Sort By',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Deadline'),
+                      selected: _sortBy == 'deadline',
+                      onSelected: (selected) {
+                        setDialogState(() => _sortBy = 'deadline');
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('Priority'),
+                      selected: _sortBy == 'priority',
+                      onSelected: (selected) {
+                        setDialogState(() => _sortBy = 'priority');
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('Title'),
+                      selected: _sortBy == 'title',
+                      onSelected: (selected) {
+                        setDialogState(() => _sortBy = 'title');
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _filterStatus = null;
+                _filterPriority = null;
+                _sortBy = 'deadline';
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Reset'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {}); // Apply filters
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7B68EE),
+            ),
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = _authService.currentUserId;
+
+    if (currentUserId == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Please log in to search tasks'),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -69,6 +253,17 @@ class _SearchPageState extends State<SearchPage> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.filter_list,
+              color: (_filterStatus != null || _filterPriority != null)
+                  ? const Color(0xFF7B68EE)
+                  : Colors.black,
+            ),
+            onPressed: _showFilterDialog,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -97,84 +292,184 @@ class _SearchPageState extends State<SearchPage> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF7B68EE),
-                    width: 2,
-                  ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
               ),
               onChanged: _performSearch,
             ),
           ),
 
-          // Results Count
-          if (_searchQuery.isNotEmpty)
+          // ✅ Active Filters Display
+          if (_filterStatus != null || _filterPriority != null)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: Colors.white,
-              child: Row(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Text(
-                    'Found ${_filteredTasks.length} ${_filteredTasks.length == 1 ? 'task' : 'tasks'}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+                  if (_filterStatus != null)
+                    Chip(
+                      avatar: Icon(
+                        Icons.circle,
+                        size: 12,
+                        color: TaskHelper.getStatusColor(_filterStatus!),
+                      ),
+                      label: Text(
+                        'Status: ${TaskHelper.getStatusText(_filterStatus!)}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                      onDeleted: () {
+                        setState(() => _filterStatus = null);
+                      },
+                      backgroundColor: TaskHelper.getStatusColor(_filterStatus!)
+                          .withOpacity(0.1),
                     ),
-                  ),
+                  if (_filterPriority != null)
+                    Chip(
+                      avatar: Icon(
+                        Icons.flag,
+                        size: 12,
+                        color: TaskHelper.getPriorityColor(_filterPriority!),
+                      ),
+                      label: Text(
+                        'Priority: ${TaskHelper.getPriorityText(_filterPriority!)}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                      onDeleted: () {
+                        setState(() => _filterPriority = null);
+                      },
+                      backgroundColor:
+                          TaskHelper.getPriorityColor(_filterPriority!)
+                              .withOpacity(0.1),
+                    ),
                 ],
               ),
             ),
 
           const SizedBox(height: 8),
 
-          // Task List
+          // ✅ Task List with StreamBuilder
           Expanded(
-            child: _filteredTasks.isEmpty
-                ? Center(
+            child: StreamBuilder<List<Task>>(
+              stream: _taskService.getAllUserTasks(currentUserId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          _searchQuery.isEmpty
-                              ? Icons.search_off
-                              : Icons.inbox_outlined,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
+                        Icon(Icons.error_outline,
+                            size: 64, color: Colors.red[300]),
                         const SizedBox(height: 16),
                         Text(
-                          _searchQuery.isEmpty
-                              ? 'Start typing to search tasks'
-                              : 'No tasks found',
+                          'Error loading tasks',
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.grey[600],
                           ),
                         ),
-                        if (_searchQuery.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Try searching with different keywords',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[500],
-                            ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${snapshot.error}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
                           ),
-                        ],
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _filteredTasks.length,
-                    itemBuilder: (context, index) {
-                      final task = _filteredTasks[index];
-                      return _buildTaskCard(task);
-                    },
-                  ),
+                  );
+                }
+
+                final allTasks = snapshot.data ?? [];
+                final filteredTasks = _filterAndSortTasks(allTasks);
+
+                // Results count
+                return Column(
+                  children: [
+                    // Result Count
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        '${filteredTasks.length} task(s) found',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
+                    // Task List
+                    Expanded(
+                      child: filteredTasks.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _searchQuery.isEmpty
+                                        ? Icons.search_off
+                                        : Icons.inbox_outlined,
+                                    size: 64,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _searchQuery.isEmpty
+                                        ? 'Start typing to search tasks'
+                                        : 'No tasks found',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  if (_searchQuery.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Try different keywords or filters',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              itemCount: filteredTasks.length,
+                              itemBuilder: (context, index) {
+                                final task = filteredTasks[index];
+                                return _buildTaskCard(task);
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -183,36 +478,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildTaskCard(Task task) {
     final isOverdue = task.isOverdue;
-    final daysUntil = task.deadline.difference(DateTime.now()).inDays;
-
-    Color statusColor;
-    IconData statusIcon;
-
-    switch (task.status) {
-      case TaskStatus.completed:
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
-        break;
-      case TaskStatus.inProgress:
-        statusColor = Colors.blue;
-        statusIcon = Icons.pending;
-        break;
-      default:
-        statusColor = Colors.orange;
-        statusIcon = Icons.circle_outlined;
-    }
-
-    Color priorityColor;
-    switch (task.priority) {
-      case TaskPriority.high:
-        priorityColor = Colors.red;
-        break;
-      case TaskPriority.medium:
-        priorityColor = Colors.orange;
-        break;
-      default:
-        priorityColor = Colors.green;
-    }
+    final daysUntil = task.daysUntilDeadline;
 
     return GestureDetector(
       onTap: () {
@@ -228,11 +494,7 @@ class _SearchPageState extends State<SearchPage> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: priorityColor.withOpacity(0.3),
-            width: 2,
-          ),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -244,25 +506,9 @@ class _SearchPageState extends State<SearchPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row
+            // Title and Status
             Row(
               children: [
-                // Status Icon
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    statusIcon,
-                    color: statusColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Task Title
                 Expanded(
                   child: Text(
                     task.title,
@@ -278,25 +524,37 @@ class _SearchPageState extends State<SearchPage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-
-                // Priority Flag
-                Icon(
-                  Icons.flag,
-                  color: priorityColor,
-                  size: 20,
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        TaskHelper.getStatusColor(task.status).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    TaskHelper.getStatusText(task.status),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: TaskHelper.getStatusColor(task.status),
+                    ),
+                  ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
             // Description
             Text(
               task.description,
               style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[700],
-                height: 1.4,
+                fontSize: 13,
+                color: Colors.grey[600],
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -304,86 +562,75 @@ class _SearchPageState extends State<SearchPage> {
 
             const SizedBox(height: 12),
 
-            // Bottom Row - Tags and Deadline
+            // Bottom Row: Project, Priority, Deadline
             Row(
               children: [
-                // Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    TaskHelper.getStatusText(task.status),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
-                    ),
+                // Project
+                Icon(Icons.folder_outlined, size: 14, color: Colors.grey[500]),
+                const SizedBox(width: 4),
+                Text(
+                  task.projectName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
                   ),
                 ),
 
-                const SizedBox(width: 8),
+                const SizedBox(width: 16),
 
-                // Project Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.folder_outlined,
-                        size: 12,
-                        color: Colors.grey[700],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        task.projectName,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
+                // Priority
+                Icon(
+                  Icons.flag,
+                  size: 14,
+                  color: TaskHelper.getPriorityColor(task.priority),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  TaskHelper.getPriorityText(task.priority),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: TaskHelper.getPriorityColor(task.priority),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
 
                 const Spacer(),
 
                 // Deadline
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 14,
-                      color: isOverdue ? Colors.red : Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isOverdue
-                          ? 'Overdue'
-                          : daysUntil == 0
-                              ? 'Today'
-                              : '$daysUntil days',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isOverdue ? Colors.red : Colors.grey[700],
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isOverdue
+                        ? Colors.red.withOpacity(0.1)
+                        : Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 12,
+                        color: isOverdue ? Colors.red : Colors.blue,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Text(
+                        isOverdue
+                            ? 'Overdue'
+                            : daysUntil == 0
+                                ? 'Today'
+                                : '${daysUntil}d',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isOverdue ? Colors.red : Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

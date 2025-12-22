@@ -1,75 +1,132 @@
 // ============================================
 // FILE: lib/models/file_attachment.dart
+// FILE ATTACHMENT MODEL
 // ============================================
-
-import 'package:flutter/material.dart';
 
 class FileAttachment {
   final String id;
+  final String taskId;
   final String fileName;
-  final String fileType; // pdf, docx, png, etc.
-  final int fileSize; // in bytes
-  final String uploadedBy; // User ID
+  final String fileUrl;
+  final int fileSize;
+  final String fileType; // 'pdf', 'image', 'document', etc.
+  final String uploadedBy; // userId
   final DateTime uploadedAt;
-  final String? filePath; // URL or local path (for future)
 
   FileAttachment({
     required this.id,
+    required this.taskId,
     required this.fileName,
-    required this.fileType,
+    required this.fileUrl,
     required this.fileSize,
+    required this.fileType,
     required this.uploadedBy,
     required this.uploadedAt,
-    this.filePath,
   });
 
+  // Create from Firestore document
+  factory FileAttachment.fromMap(Map<String, dynamic> map, String id) {
+    return FileAttachment(
+      id: id,
+      taskId: map['taskId'] ?? '',
+      fileName: map['fileName'] ?? '',
+      fileUrl: map['fileUrl'] ?? '',
+      fileSize: map['fileSize'] ?? 0,
+      fileType: map['fileType'] ?? 'unknown',
+      uploadedBy: map['uploadedBy'] ?? '',
+      uploadedAt: map['uploadedAt']?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  // Convert to map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'taskId': taskId,
+      'fileName': fileName,
+      'fileUrl': fileUrl,
+      'fileSize': fileSize,
+      'fileType': fileType,
+      'uploadedBy': uploadedBy,
+      'uploadedAt': uploadedAt,
+    };
+  }
+
+  // Get formatted file size
+  String get formattedSize {
+    if (fileSize < 1024) return '${fileSize}B';
+    if (fileSize < 1024 * 1024) {
+      return '${(fileSize / 1024).toStringAsFixed(1)}KB';
+    }
+    if (fileSize < 1024 * 1024 * 1024) {
+      return '${(fileSize / (1024 * 1024)).toStringAsFixed(1)}MB';
+    }
+    return '${(fileSize / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
+  }
+
   // Get file extension
-  String get extension => fileName.split('.').last.toLowerCase();
-
-  // Get file size in readable format
-  String get fileSizeText {
-    if (fileSize < 1024) return '$fileSize B';
-    if (fileSize < 1024 * 1024)
-      return '${(fileSize / 1024).toStringAsFixed(1)} KB';
-    return '${(fileSize / (1024 * 1024)).toStringAsFixed(1)} MB';
+  String get extension {
+    final parts = fileName.split('.');
+    return parts.length > 1 ? parts.last.toLowerCase() : '';
   }
 
-  // Get icon based on file type
-  IconData get icon {
-    switch (fileType.toLowerCase()) {
+  // Check if file is an image
+  bool get isImage {
+    return fileType == 'image' ||
+        ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension);
+  }
+
+  // Check if file is a PDF
+  bool get isPdf {
+    return fileType == 'pdf' || extension == 'pdf';
+  }
+
+  // Check if file is a document
+  bool get isDocument {
+    return fileType == 'document' || ['doc', 'docx', 'txt'].contains(extension);
+  }
+
+  // Get icon for file type
+  String get icon {
+    switch (fileType) {
       case 'pdf':
-        return Icons.picture_as_pdf;
-      case 'doc':
-      case 'docx':
-        return Icons.description;
-      case 'png':
-      case 'jpg':
-      case 'jpeg':
-      case 'gif':
-        return Icons.image;
-      case 'zip':
-      case 'rar':
-        return Icons.folder_zip;
+        return '📄';
+      case 'document':
+        return '📝';
+      case 'spreadsheet':
+        return '📊';
+      case 'presentation':
+        return '📽️';
+      case 'image':
+        return '🖼️';
+      case 'archive':
+        return '🗜️';
+      case 'text':
+        return '📃';
       default:
-        return Icons.insert_drive_file;
+        return '📎';
     }
   }
 
-  // Get color based on file type
-  Color get iconColor {
-    switch (fileType.toLowerCase()) {
-      case 'pdf':
-        return Colors.red;
-      case 'doc':
-      case 'docx':
-        return Colors.blue;
-      case 'png':
-      case 'jpg':
-      case 'jpeg':
-      case 'gif':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
+  // Copy with
+  FileAttachment copyWith({
+    String? id,
+    String? taskId,
+    String? fileName,
+    String? fileUrl,
+    int? fileSize,
+    String? fileType,
+    String? uploadedBy,
+    DateTime? uploadedAt,
+  }) {
+    return FileAttachment(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      fileName: fileName ?? this.fileName,
+      fileUrl: fileUrl ?? this.fileUrl,
+      fileSize: fileSize ?? this.fileSize,
+      fileType: fileType ?? this.fileType,
+      uploadedBy: uploadedBy ?? this.uploadedBy,
+      uploadedAt: uploadedAt ?? this.uploadedAt,
+    );
   }
 }

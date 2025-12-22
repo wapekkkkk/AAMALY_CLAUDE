@@ -1,10 +1,14 @@
 // ============================================
-// FILE: lib/screens/create_reminder_page.dart
+// FILE: lib/screens/create_reminder_page.dart (UPDATED WITH FIREBASE)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/reminder.dart';
+import '../services/reminder_service.dart'; // ✅ NEW
+import '../services/firebase_auth_service.dart'; // ✅ NEW
+import '../utils/logger.dart'; // ✅ NEW
+import '../utils/error_handler.dart'; // ✅ NEW
 
 class CreateReminderPage extends StatefulWidget {
   const CreateReminderPage({Key? key}) : super(key: key);
@@ -17,6 +21,9 @@ class _CreateReminderPageState extends State<CreateReminderPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
+
+  final _reminderService = ReminderService(); // ✅ NEW
+  final _authService = FirebaseAuthService(); // ✅ NEW
 
   ReminderFrequency _selectedFrequency = ReminderFrequency.daily;
   TimeOfDay _selectedTime = TimeOfDay.now();
@@ -52,8 +59,20 @@ class _CreateReminderPageState extends State<CreateReminderPage> {
     }
   }
 
+  // ✅ NEW - Save to Firebase
   Future<void> _handleCreateReminder() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final currentUserId = _authService.currentUserId;
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be logged in to create a reminder'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
@@ -61,364 +80,260 @@ class _CreateReminderPageState extends State<CreateReminderPage> {
       _isLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      Logger.info('Creating reminder...', 'CreateReminderPage');
 
-    final now = DateTime.now();
-    final reminderDateTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      _selectedTime.hour,
-      _selectedTime.minute,
-    );
-
-    final newReminder = Reminder(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _nameController.text.trim(),
-      frequency: _selectedFrequency,
-      reminderTime: reminderDateTime,
-      description: _descriptionController.text.trim(),
-      isActive: true,
-      createdAt: DateTime.now(),
-    );
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (mounted) {
-      Navigator.of(context).pop(newReminder);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Reminder created successfully!'),
-          backgroundColor: Colors.green,
-        ),
+      // Create reminder time
+      final now = DateTime.now();
+      final reminderDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
       );
+
+      // Save to Firebase
+      await _reminderService.createReminder(
+        userId: currentUserId,
+        name: _nameController.text.trim(),
+        frequency: _selectedFrequency,
+        reminderTime: reminderDateTime,
+        description: _descriptionController.text.trim(),
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      Logger.success('Reminder created successfully', 'CreateReminderPage');
+
+      // Return to calendar page
+      if (mounted) {
+        Navigator.of(context).pop(true); // Return true to indicate success
+      }
+    } catch (e) {
+      Logger.error('Failed to create reminder', e);
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ErrorHandler.getErrorMessage(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final formattedTime = _selectedTime.format(context);
-
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFFF69B4), Color(0xFFB19EFF)],
-            begin: Alignment.topCenter,
-            end: Alignment.center,
-          ),
-        ),
-        child: SafeArea(
+      backgroundColor: const Color(0xFFF5F7FA),
+      appBar: AppBar(
+        title: const Text('Create Reminder'),
+        backgroundColor: const Color(0xFFFF69B4),
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Create a Reminder',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.search, color: Colors.white),
-                      onPressed: () {},
-                    ),
-                  ],
+              // Reminder Name
+              const Text(
+                'Reminder Name',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  hintText: 'E.g., Morning Study Session',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a reminder name';
+                  }
+                  if (value.trim().length < 3) {
+                    return 'Name must be at least 3 characters';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // Description
+              const Text(
+                'Description (Optional)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Add any notes...',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                 ),
               ),
 
-              // Form Section
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 20),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30),
+              const SizedBox(height: 24),
+
+              // Frequency
+              const Text(
+                'Frequency',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: ReminderFrequency.values.map((frequency) {
+                  final isSelected = _selectedFrequency == frequency;
+                  final color = ReminderService.getFrequencyColor(frequency);
+
+                  return ChoiceChip(
+                    label: Text(ReminderService.getFrequencyText(frequency)),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedFrequency = frequency;
+                        });
+                      }
+                    },
+                    selectedColor: color.withOpacity(0.2),
+                    checkmarkColor: color,
+                    labelStyle: TextStyle(
+                      color: isSelected ? color : Colors.grey[700],
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
-                  ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Name Section (on gradient background)
-                          Transform.translate(
-                            offset: const Offset(0, -80),
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFFF69B4),
-                                    Color(0xFFB19EFF)
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Name',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _nameController,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    decoration: const InputDecoration(
-                                      hintText: 'E.g., Morning Exercise',
-                                      hintStyle: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 20,
-                                      ),
-                                      border: InputBorder.none,
-                                    ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'Please enter reminder name';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 24),
-
-                                  // Frequency
-                                  const Text(
-                                    'Reminder',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  GestureDetector(
-                                    onTap: () => _showFrequencyPicker(),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 12,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            _selectedFrequency
-                                                .toString()
-                                                .split('.')
-                                                .last
-                                                .toUpperCase(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          const Icon(
-                                            Icons.keyboard_arrow_down,
-                                            color: Colors.white,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 24),
-
-                                  // Time
-                                  const Text(
-                                    'Time of Reminder',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  GestureDetector(
-                                    onTap: _selectTime,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 12,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            formattedTime,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          const Icon(
-                                            Icons.keyboard_arrow_down,
-                                            color: Colors.white,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // Description
-                          Transform.translate(
-                            offset: const Offset(0, -60),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Description',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1A1A2E),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _descriptionController,
-                                  maxLines: 4,
-                                  decoration: InputDecoration(
-                                    hintText: 'Add description...',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide:
-                                          BorderSide(color: Colors.grey[300]!),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.grey[50],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Create Button
-                          Transform.translate(
-                            offset: const Offset(0, -40),
-                            child: ElevatedButton(
-                              onPressed:
-                                  _isLoading ? null : _handleCreateReminder,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFF69B4),
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 2,
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                Colors.white),
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Create Reminder',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected ? color : Colors.grey[300]!,
                       ),
                     ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Time
+              const Text(
+                'Reminder Time',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: _selectTime,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
                   ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.access_time, color: Color(0xFFFF69B4)),
+                      const SizedBox(width: 12),
+                      Text(
+                        _selectedTime.format(context),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.arrow_forward_ios, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Create Button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleCreateReminder,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF69B4),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Create Reminder',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showFrequencyPicker() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Select Frequency',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ...ReminderFrequency.values.map((frequency) {
-              return ListTile(
-                title: Text(
-                  frequency.toString().split('.').last.toUpperCase(),
-                  style: const TextStyle(fontSize: 16),
-                ),
-                trailing: _selectedFrequency == frequency
-                    ? const Icon(Icons.check, color: Color(0xFF7B68EE))
-                    : null,
-                onTap: () {
-                  setState(() {
-                    _selectedFrequency = frequency;
-                  });
-                  Navigator.pop(context);
-                },
-              );
-            }),
-          ],
         ),
       ),
     );

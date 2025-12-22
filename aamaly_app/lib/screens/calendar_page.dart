@@ -1,11 +1,18 @@
+// ============================================
+// FILE: lib/screens/calendar_page.dart (FULL MONTH CALENDAR WITH WEEK ARROWS)
+// ============================================
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../models/reminder.dart';
-import '../data/mock_data.dart';
-import '../data/mock_reminders.dart';
 import 'task_detail_page.dart';
 import 'create_reminder_page.dart';
+import '../services/task_service.dart';
+import '../services/reminder_service.dart';
+import '../services/firebase_auth_service.dart';
+import '../utils/logger.dart';
+import '../utils/error_handler.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({Key? key}) : super(key: key);
@@ -17,47 +24,81 @@ class CalendarPage extends StatefulWidget {
 class _CalendarPageState extends State<CalendarPage> {
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedMonth = DateTime.now();
-  List<Task> _allTasks = [];
-  List<Reminder> _allReminders = [];
+  DateTime _currentWeekStart = DateTime.now(); // ✅ NEW - Track current week
+
+  final _taskService = TaskService();
+  final _reminderService = ReminderService();
+  final _authService = FirebaseAuthService();
 
   @override
   void initState() {
     super.initState();
-    _allTasks = MockData.getTasks();
-    _allReminders = MockReminders.getReminders();
+    _currentWeekStart = _getWeekStart(_focusedMonth); // ✅ Initialize week
+    Logger.navigation('Dashboard', 'CalendarPage');
+  }
+
+  // ✅ NEW - Get start of week (Sunday)
+  DateTime _getWeekStart(DateTime date) {
+    return date.subtract(Duration(days: date.weekday % 7));
+  }
+
+  // ✅ NEW - Navigate to previous week
+  void _previousWeek() {
+    setState(() {
+      _currentWeekStart = _currentWeekStart.subtract(const Duration(days: 7));
+      _focusedMonth = _currentWeekStart;
+    });
+  }
+
+  // ✅ NEW - Navigate to next week
+  void _nextWeek() {
+    setState(() {
+      _currentWeekStart = _currentWeekStart.add(const Duration(days: 7));
+      _focusedMonth = _currentWeekStart;
+    });
   }
 
   // Get tasks for a specific date
-  List<Task> _getTasksForDate(DateTime date) {
-    return _allTasks.where((task) {
+  List<Task> _getTasksForDate(List<Task> allTasks, DateTime date) {
+    return allTasks.where((task) {
       return task.deadline.year == date.year &&
           task.deadline.month == date.month &&
           task.deadline.day == date.day;
     }).toList();
   }
 
-  // Get count of tasks for a specific date
-  int _getTaskCountForDate(DateTime date) {
-    return _getTasksForDate(date).length;
+  int _getTaskCountForDate(List<Task> allTasks, DateTime date) {
+    return _getTasksForDate(allTasks, date).length;
   }
 
-  // Toggle reminder on/off
-  void _toggleReminder(Reminder reminder) {
-    setState(() {
-      final index = _allReminders.indexWhere((r) => r.id == reminder.id);
-      if (index != -1) {
-        _allReminders[index] = reminder.copyWith(isActive: !reminder.isActive);
-      }
-    });
+  // Toggle reminder
+  Future<void> _toggleReminder(Reminder reminder) async {
+    try {
+      await _reminderService.toggleReminder(reminder.id, !reminder.isActive);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          reminder.isActive ? 'Reminder turned off' : 'Reminder turned on',
-        ),
-        duration: const Duration(seconds: 1),
-      ),
-    );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              reminder.isActive ? 'Reminder turned off' : 'Reminder turned on',
+            ),
+            duration: const Duration(seconds: 1),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      Logger.error('Failed to toggle reminder', e);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ErrorHandler.getErrorMessage(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // Show month picker
@@ -72,9 +113,6 @@ class _CalendarPageState extends State<CalendarPage> {
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF2196F3),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
             ),
           ),
           child: child!,
@@ -86,12 +124,23 @@ class _CalendarPageState extends State<CalendarPage> {
       setState(() {
         _focusedMonth = picked;
         _selectedDate = picked;
+        _currentWeekStart = _getWeekStart(picked);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = _authService.currentUserId;
+
+    if (currentUserId == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Please log in to view calendar'),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -112,204 +161,148 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Month Header with Calendar Icon
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    DateFormat('MMMM, yyyy')
-                        .format(_focusedMonth)
-                        .toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _showMonthPicker,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2196F3).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.calendar_month,
-                        color: Color(0xFF2196F3),
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      body: StreamBuilder<List<Task>>(
+        stream: _taskService.getAllUserTasks(currentUserId),
+        builder: (context, taskSnapshot) {
+          final allTasks = taskSnapshot.data ?? [];
 
-            // Week Days Calendar
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-              child: _buildWeekCalendar(),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Task List Section
-            _buildTaskList(),
-
-            const SizedBox(height: 16),
-
-            // Reminder Section
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Month Header with Calendar Icon
+                Container(
+                  color: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Reminder',
-                        style: TextStyle(
+                      Text(
+                        DateFormat('MMMM, yyyy')
+                            .format(_focusedMonth)
+                            .toUpperCase(),
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1A1A2E),
+                          letterSpacing: 1,
                         ),
                       ),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          final newReminder = await Navigator.push<Reminder>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const CreateReminderPage(),
-                            ),
-                          );
-
-                          if (newReminder != null) {
-                            setState(() {
-                              _allReminders.insert(0, newReminder);
-                            });
-                          }
-                        },
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Add Reminder'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF69B4),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                      GestureDetector(
+                        onTap: _showMonthPicker,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2196F3).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                          child: const Icon(
+                            Icons.calendar_month,
+                            color: Color(0xFF2196F3),
+                            size: 24,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                ),
 
-                  // Reminder List
-                  _allReminders.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32.0),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.alarm_off,
-                                  size: 48,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'No reminders yet',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _allReminders.length,
-                          itemBuilder: (context, index) {
-                            final reminder = _allReminders[index];
-                            return _buildReminderCard(reminder);
-                          },
-                        ),
-                ],
-              ),
+                // ✅ Week Calendar with Navigation Arrows
+                Container(
+                  color: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  child: Row(
+                    children: [
+                      // Left Arrow
+                      IconButton(
+                        onPressed: _previousWeek,
+                        icon: const Icon(Icons.chevron_left),
+                        color: const Color(0xFF2196F3),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+
+                      // Week Days
+                      Expanded(
+                        child: _buildWeekCalendar(allTasks),
+                      ),
+
+                      // Right Arrow
+                      IconButton(
+                        onPressed: _nextWeek,
+                        icon: const Icon(Icons.chevron_right),
+                        color: const Color(0xFF2196F3),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Task List Section
+                _buildTaskList(allTasks),
+
+                const SizedBox(height: 16),
+
+                // Reminder Section
+                _buildReminderSection(currentUserId),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  /// WEEK CALENDAR using _focusedMonth (start week on Sunday)
-  Widget _buildWeekCalendar() {
-    // Get the start of the week (Sunday) based on _focusedMonth
-    final startOfWeek =
-        _focusedMonth.subtract(Duration(days: _focusedMonth.weekday % 7));
-
-    // Generate 7 days starting from start of week
+  /// ✅ WEEK CALENDAR (7 days) - Original Design
+  Widget _buildWeekCalendar(List<Task> allTasks) {
+    // Generate 7 days starting from current week start
     final weekDays = List.generate(7, (index) {
-      return startOfWeek.add(Duration(days: index));
+      return _currentWeekStart.add(Duration(days: index));
     });
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: weekDays.map((date) {
-        final isSelected = date.day == _selectedDate.day &&
-            date.month == _selectedDate.month &&
-            date.year == _selectedDate.year;
+        final isSelected = _selectedDate.year == date.year &&
+            _selectedDate.month == date.month &&
+            _selectedDate.day == date.day;
 
-        final isToday = date.day == DateTime.now().day &&
-            date.month == DateTime.now().month &&
-            date.year == DateTime.now().year;
+        final isToday = DateTime.now().year == date.year &&
+            DateTime.now().month == date.month &&
+            DateTime.now().day == date.day;
 
-        final taskCount = _getTaskCountForDate(date);
+        final taskCount = _getTaskCountForDate(allTasks, date);
         final hasDeadlines = taskCount > 0;
 
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedDate = date;
-            });
-          },
-          child: Container(
-            width: 45,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+        return Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedDate = date;
+              });
+            },
             child: Column(
               children: [
-                // Day name
+                // Day name (Su, Mo, Tu, etc.)
                 Text(
                   DateFormat('E').format(date).substring(0, 2),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color:
-                        isSelected ? const Color(0xFF2196F3) : Colors.grey[600],
+                    color: Colors.grey[600],
                   ),
                 ),
                 const SizedBox(height: 8),
 
-                // Date circle with badge
+                // Date with badge
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
+                    // Date circle
                     Container(
                       width: 40,
                       height: 40,
@@ -336,7 +329,7 @@ class _CalendarPageState extends State<CalendarPage> {
                       ),
                     ),
 
-                    // Red badge with count
+                    // Red badge with count (top-right corner)
                     if (hasDeadlines)
                       Positioned(
                         right: -2,
@@ -373,8 +366,8 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   /// TASK LIST for the selected date
-  Widget _buildTaskList() {
-    final tasksForSelectedDate = _getTasksForDate(_selectedDate);
+  Widget _buildTaskList(List<Task> allTasks) {
+    final tasksForSelectedDate = _getTasksForDate(allTasks, _selectedDate);
     final isToday = _selectedDate.day == DateTime.now().day &&
         _selectedDate.month == DateTime.now().month &&
         _selectedDate.year == DateTime.now().year;
@@ -451,7 +444,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Enjoy your free time! 🎉',
+                    'Enjoy your free time!',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[500],
@@ -475,25 +468,134 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
+  /// REMINDER SECTION
+  Widget _buildReminderSection(String userId) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Reminders',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreateReminderPage(),
+                    ),
+                  );
+
+                  if (result == true && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Reminder created successfully!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Reminder'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF69B4),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Reminder list
+          StreamBuilder<List<Reminder>>(
+            stream: _reminderService.getUserReminders(userId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Error loading reminders: ${snapshot.error}',
+                      style: TextStyle(color: Colors.red[700]),
+                    ),
+                  ),
+                );
+              }
+
+              final reminders = snapshot.data ?? [];
+
+              if (reminders.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.alarm_off,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No reminders yet',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: reminders.length,
+                itemBuilder: (context, index) {
+                  final reminder = reminders[index];
+                  return _buildReminderCard(reminder);
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   /// TASK CARD
   Widget _buildTaskCard(Task task) {
-    Color statusColor;
-    IconData statusIcon;
-
-    switch (task.status) {
-      case TaskStatus.completed:
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
-        break;
-      case TaskStatus.inProgress:
-        statusColor = Colors.blue;
-        statusIcon = Icons.pending;
-        break;
-      default:
-        statusColor = Colors.orange;
-        statusIcon = Icons.circle_outlined;
-    }
-
     Color priorityColor;
     switch (task.priority) {
       case TaskPriority.high:
@@ -502,8 +604,22 @@ class _CalendarPageState extends State<CalendarPage> {
       case TaskPriority.medium:
         priorityColor = Colors.orange;
         break;
-      default:
+      case TaskPriority.low:
         priorityColor = Colors.green;
+        break;
+    }
+
+    Color statusColor;
+    switch (task.status) {
+      case TaskStatus.completed:
+        statusColor = Colors.green;
+        break;
+      case TaskStatus.inProgress:
+        statusColor = Colors.blue;
+        break;
+      case TaskStatus.todo:
+        statusColor = Colors.grey;
+        break;
     }
 
     return GestureDetector(
@@ -521,10 +637,6 @@ class _CalendarPageState extends State<CalendarPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: priorityColor.withOpacity(0.3),
-            width: 2,
-          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -535,23 +647,15 @@ class _CalendarPageState extends State<CalendarPage> {
         ),
         child: Row(
           children: [
-            // Status Icon
             Container(
-              padding: const EdgeInsets.all(10),
+              width: 4,
+              height: 60,
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                statusIcon,
                 color: statusColor,
-                size: 24,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-
             const SizedBox(width: 12),
-
-            // Task Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,10 +670,10 @@ class _CalendarPageState extends State<CalendarPage> {
                           ? TextDecoration.lineThrough
                           : null,
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       Container(
@@ -578,30 +682,39 @@ class _CalendarPageState extends State<CalendarPage> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
+                          color: statusColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          task.projectName,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                          task.status.toString().split('.').last.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: statusColor,
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(
-                        Icons.flag,
-                        size: 14,
-                        color: priorityColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        task.priority.toString().split('.').last.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: priorityColor,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: priorityColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          task.priority
+                              .toString()
+                              .split('.')
+                              .last
+                              .toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: priorityColor,
+                          ),
                         ),
                       ),
                     ],
@@ -609,7 +722,6 @@ class _CalendarPageState extends State<CalendarPage> {
                 ],
               ),
             ),
-
             Icon(
               Icons.arrow_forward_ios,
               size: 16,
@@ -623,22 +735,8 @@ class _CalendarPageState extends State<CalendarPage> {
 
   /// REMINDER CARD
   Widget _buildReminderCard(Reminder reminder) {
-    Color frequencyColor;
-
-    switch (reminder.frequency) {
-      case ReminderFrequency.once:
-        frequencyColor = Colors.blue;
-        break;
-      case ReminderFrequency.daily:
-        frequencyColor = Colors.green;
-        break;
-      case ReminderFrequency.weekly:
-        frequencyColor = Colors.orange;
-        break;
-      case ReminderFrequency.monthly:
-        frequencyColor = Colors.purple;
-        break;
-    }
+    final frequencyColor =
+        ReminderService.getFrequencyColor(reminder.frequency);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -656,7 +754,6 @@ class _CalendarPageState extends State<CalendarPage> {
       ),
       child: Row(
         children: [
-          // Icon
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -669,10 +766,7 @@ class _CalendarPageState extends State<CalendarPage> {
               size: 24,
             ),
           ),
-
           const SizedBox(width: 12),
-
-          // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -686,110 +780,66 @@ class _CalendarPageState extends State<CalendarPage> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Added ${_getTimeAgo(reminder.createdAt)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      DateFormat('hh:mm a').format(reminder.reminderTime),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: frequencyColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        ReminderService.getFrequencyText(reminder.frequency),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: frequencyColor,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-
-          // Status Circle
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: reminder.isActive ? frequencyColor : Colors.grey[300],
+          GestureDetector(
+            onTap: () => _toggleReminder(reminder),
+            child: Container(
+              width: 50,
+              height: 28,
+              decoration: BoxDecoration(
+                color: reminder.isActive
+                    ? const Color(0xFF4CAF50)
+                    : Colors.grey[300],
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 200),
+                alignment: reminder.isActive
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
             ),
-            child: reminder.isActive
-                ? const Icon(Icons.check, size: 14, color: Colors.white)
-                : null,
-          ),
-
-          const SizedBox(width: 8),
-
-          // Menu
-          PopupMenuButton(
-            icon: Icon(Icons.more_vert, color: Colors.grey[400], size: 20),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'toggle',
-                child: Row(
-                  children: [
-                    Icon(
-                      reminder.isActive ? Icons.pause : Icons.play_arrow,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(reminder.isActive ? 'Turn Off' : 'Turn On'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, size: 18, color: Colors.red),
-                    SizedBox(width: 12),
-                    Text('Delete', style: TextStyle(color: Colors.red)),
-                  ],
-                ),
-              ),
-            ],
-            onSelected: (value) {
-              if (value == 'toggle') {
-                _toggleReminder(reminder);
-              } else if (value == 'delete') {
-                _deleteReminder(reminder);
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getTimeAgo(DateTime date) {
-    final difference = DateTime.now().difference(date);
-    if (difference.inDays > 0) {
-      return '${difference.inDays} ${difference.inDays == 1 ? 'Day' : 'Days'} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} ${difference.inHours == 1 ? 'Hour' : 'Hours'} ago';
-    } else {
-      return 'Just now';
-    }
-  }
-
-  void _deleteReminder(Reminder reminder) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Reminder'),
-        content: Text('Are you sure you want to delete "${reminder.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _allReminders.removeWhere((r) => r.id == reminder.id);
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Reminder deleted'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
           ),
         ],
       ),
