@@ -1,17 +1,16 @@
 // ============================================
-// FILE: lib/screens/create_task_page.dart (UPDATED WITH FIREBASE)
+// FILE: lib/screens/create_task_page.dart (WITH FIREBASE COLLABORATORS)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../models/project.dart';
-import '../data/mock_projects.dart';
-import '../models/user.dart';
-import '../data/mock_users.dart';
-import '../services/project_service.dart'; // ✅ ADD THIS
-import '../services/task_service.dart'; // NEW: Import TaskService
-import '../services/firebase_auth_service.dart'; // NEW: Import Firebase Auth
+import '../models/user.dart' as app_user; // ✅ CHANGED
+import '../services/project_service.dart';
+import '../services/task_service.dart';
+import '../services/firebase_auth_service.dart';
+import '../services/friend_service.dart'; // ✅ NEW
 
 class CreateTaskPage extends StatefulWidget {
   final String? lockedProjectName;
@@ -34,10 +33,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  // NEW: Firebase services
   final _taskService = TaskService();
   final _authService = FirebaseAuthService();
-  final _projectService = ProjectService(); // ✅ ADD THIS
+  final _projectService = ProjectService();
+  final _friendService = FriendService(); // ✅ NEW
 
   DateTime? _selectedDeadline;
   TaskPriority _selectedPriority = TaskPriority.medium;
@@ -47,26 +46,30 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   bool _isLoading = false;
   List<Project> _availableProjects = [];
+  List<app_user.User> _projectCollaborators = []; // ✅ NEW
 
   Color _themeColor = const Color(0xFF2196F3);
 
   @override
   void initState() {
     super.initState();
-    _loadProjects(); // ✅ LOAD FROM FIREBASE
+    _loadProjects();
 
     if (widget.lockedProjectName != null) {
       _selectedProjectName =
           widget.lockedProjectCode ?? widget.lockedProjectName;
+
+      // ✅ Load collaborators if project is locked
+      if (widget.project != null) {
+        _loadProjectCollaborators(widget.project!.id);
+      }
     }
   }
 
-  // ✅ NEW METHOD - Load projects from Firebase
   Future<void> _loadProjects() async {
     try {
       final currentUserId = _authService.currentUserId;
       if (currentUserId != null) {
-        // Get user's projects as a one-time fetch
         final projects =
             await _projectService.getAllUserProjects(currentUserId).first;
 
@@ -78,6 +81,25 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       }
     } catch (e) {
       print('Error loading projects: $e');
+    }
+  }
+
+  // ✅ NEW METHOD - Load collaborators for selected project
+  Future<void> _loadProjectCollaborators(String projectId) async {
+    try {
+      final collaborators =
+          await _projectService.getProjectCollaborators(projectId);
+
+      if (mounted) {
+        setState(() {
+          _projectCollaborators = collaborators;
+        });
+      }
+    } catch (e) {
+      print('Error loading collaborators: $e');
+      setState(() {
+        _projectCollaborators = [];
+      });
     }
   }
 
@@ -114,7 +136,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
-  // NEW: Handle task creation with Firebase
   Future<void> _handleCreateTask() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -135,20 +156,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     });
 
     try {
-      // ✅ FIX 1: Get current user ID directly from auth
       final currentUserId = _authService.currentUserId;
       if (currentUserId == null) {
         throw Exception('User not authenticated');
       }
 
-      // ✅ NEW CODE - ADD THIS BLOCK HERE (between FIX 1 and FIX 2)
       // Get the actual project ID
       String? actualProjectId;
       if (widget.project != null) {
-        // If project was passed directly, use its ID
         actualProjectId = widget.project!.id;
       } else if (_selectedProjectName != null) {
-        // Otherwise, find the project by name/code
         try {
           final selectedProject = _availableProjects.firstWhere(
             (p) =>
@@ -157,12 +174,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           );
           actualProjectId = selectedProject.id;
         } catch (e) {
-          actualProjectId = null; // No project found
+          actualProjectId = null;
         }
       }
-      // ✅ END OF NEW CODE
 
-      // ✅ FIX 2: Call createTask with your service's parameters
       final taskId = await _taskService.createTask(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -171,12 +186,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         priority: TaskService.taskPriorityToString(_selectedPriority),
         projectName: _selectedProjectName ?? 'No Project',
         createdBy: currentUserId,
-        projectId:
-            actualProjectId, // ✅ CHANGE THIS FROM null to actualProjectId
+        projectId: actualProjectId,
         assignedToUserId: _assignedToUserId,
       );
 
-      // Create task object for returning to previous screen
       final createdTask = Task(
         id: taskId,
         title: _titleController.text.trim(),
@@ -193,10 +206,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       });
 
       if (mounted) {
-        // Return the created task
         Navigator.of(context).pop(createdTask);
 
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -241,7 +252,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           totalTasks: 0,
           completedTasks: 0,
           inProgressTasks: 0,
-          ownerId: '1',
+          ownerId: '',
           collaboratorIds: [],
         ),
       );
@@ -249,32 +260,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
 
     return false;
-  }
-
-  List<User> _getProjectCollaborators() {
-    Project? currentProject;
-
-    if (widget.project != null) {
-      currentProject = widget.project;
-    } else if (_selectedProjectName != null) {
-      try {
-        currentProject = _availableProjects.firstWhere(
-          (p) =>
-              p.code == _selectedProjectName || p.name == _selectedProjectName,
-        );
-      } catch (e) {
-        currentProject = null;
-      }
-    }
-
-    if (currentProject == null || currentProject.collaboratorIds.isEmpty) {
-      return [];
-    }
-
-    return currentProject.collaboratorIds
-        .map((id) => MockUsers.getUserById(id))
-        .whereType<User>()
-        .toList();
   }
 
   @override
@@ -316,7 +301,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 48), // Balance back button
+                    const SizedBox(width: 48),
                   ],
                 ),
               ),
@@ -338,7 +323,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Title and Description Section
+                          // Title and Description
                           Transform.translate(
                             offset: const Offset(0, -15),
                             child: Container(
@@ -428,7 +413,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             ),
                           ),
 
-                          // Project, Assign, Deadline Section
+                          // Project, Assign, Deadline
                           Transform.translate(
                             offset: const Offset(0, -30),
                             child: Column(
@@ -504,17 +489,39 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                           );
                                         }),
                                       ],
-                                      onChanged: (value) {
+                                      onChanged: (value) async {
                                         setState(() {
                                           _selectedProjectName = value;
+                                          _assignedToUserId =
+                                              null; // Reset assignment
                                         });
+
+                                        // ✅ Load collaborators when project changes
+                                        if (value != null) {
+                                          try {
+                                            final selectedProject =
+                                                _availableProjects.firstWhere(
+                                              (p) =>
+                                                  p.code == value ||
+                                                  p.name == value,
+                                            );
+                                            await _loadProjectCollaborators(
+                                                selectedProject.id);
+                                          } catch (e) {
+                                            print('Error: $e');
+                                          }
+                                        } else {
+                                          setState(() {
+                                            _projectCollaborators = [];
+                                          });
+                                        }
                                       },
                                     ),
                                   ),
 
                                 const SizedBox(height: 16),
 
-                                // Assign To (if collaborative project)
+                                // ✅ UPDATED: Assign To with Firebase collaborators
                                 if (_shouldShowAssignField())
                                   Column(
                                     crossAxisAlignment:
@@ -556,7 +563,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                               value: null,
                                               child: Text('Unassigned'),
                                             ),
-                                            ..._getProjectCollaborators()
+                                            // ✅ Use Firebase collaborators
+                                            ..._projectCollaborators
                                                 .map((user) {
                                               return DropdownMenuItem(
                                                 value: user.id,

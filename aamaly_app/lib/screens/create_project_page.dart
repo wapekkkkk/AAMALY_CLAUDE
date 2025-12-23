@@ -1,13 +1,13 @@
 // ============================================
-// FILE: lib/screens/create_project_page.dart (UPDATED WITH FIRESTORE)
+// FILE: lib/screens/create_project_page.dart (UPDATED WITH FIREBASE FRIENDS)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/project_service.dart';
 import '../services/firebase_auth_service.dart';
-import '../data/mock_users.dart';
-import '../models/user.dart';
+import '../services/friend_service.dart'; // ✅ NEW
+import '../models/user.dart' as app_user; // ✅ CHANGED
 
 class CreateProjectPage extends StatefulWidget {
   const CreateProjectPage({Key? key}) : super(key: key);
@@ -24,13 +24,15 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
 
   final _projectService = ProjectService();
   final _authService = FirebaseAuthService();
+  final _friendService = FriendService(); // ✅ NEW
 
   Color _selectedColor = const Color(0xFF2196F3);
   bool _isLoading = false;
 
   // Collaborators
-  List<User> _allFriends = [];
+  List<app_user.User> _allFriends = []; // ✅ CHANGED type
   List<String> _selectedCollaboratorIds = [];
+  bool _isLoadingFriends = true; // ✅ NEW
 
   // Predefined color palette
   final List<Color> _colorPalette = [
@@ -49,7 +51,34 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
   @override
   void initState() {
     super.initState();
-    _allFriends = MockUsers.getFriends();
+    _loadFriends(); // ✅ CHANGED
+  }
+
+  // ✅ NEW METHOD - Load friends from Firebase
+  Future<void> _loadFriends() async {
+    try {
+      final currentUserId = _authService.currentUserId;
+      if (currentUserId != null) {
+        final friends =
+            await _friendService.getFriendsWithDetails(currentUserId);
+        setState(() {
+          _allFriends = friends;
+          _isLoadingFriends = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingFriends = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load friends: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -277,86 +306,98 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                 ),
               ),
               Expanded(
-                child: _allFriends.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.people_outline,
-                                size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No friends yet',
-                              style: TextStyle(
-                                  fontSize: 16, color: Colors.grey[600]),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Add friends from Collaborators page',
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.grey[500]),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _allFriends.length,
-                        itemBuilder: (context, index) {
-                          final friend = _allFriends[index];
-                          final isSelected = tempSelected.contains(friend.id);
-
-                          return CheckboxListTile(
-                            value: isSelected,
-                            onChanged: (checked) {
-                              setModalState(() {
-                                if (checked == true) {
-                                  tempSelected.add(friend.id);
-                                } else {
-                                  tempSelected.remove(friend.id);
-                                }
-                              });
-                            },
-                            secondary: CircleAvatar(
-                              backgroundColor: const Color(0xFF2196F3),
-                              child: Text(
-                                friend.initials,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                child: _isLoadingFriends // ✅ CHANGED
+                    ? const Center(child: CircularProgressIndicator())
+                    : _allFriends.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.people_outline,
+                                    size: 64, color: Colors.grey[400]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No friends yet',
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey[600]),
                                 ),
-                              ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Add friends from Friends page',
+                                  style: TextStyle(
+                                      fontSize: 14, color: Colors.grey[500]),
+                                ),
+                              ],
                             ),
-                            title: Text(
-                              friend.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Text(
-                              friend.email,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            activeColor: const Color(0xFF2196F3),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                          );
-                        },
-                      ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _allFriends.length,
+                            itemBuilder: (context, index) {
+                              final friend = _allFriends[index];
+                              final isSelected =
+                                  tempSelected.contains(friend.id);
+
+                              return CheckboxListTile(
+                                value: isSelected,
+                                onChanged: (checked) {
+                                  setModalState(() {
+                                    if (checked == true) {
+                                      tempSelected.add(friend.id);
+                                    } else {
+                                      tempSelected.remove(friend.id);
+                                    }
+                                  });
+                                },
+                                secondary: CircleAvatar(
+                                  backgroundColor: const Color(0xFF2196F3),
+                                  child: Text(
+                                    friend.initials,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                title: Text(
+                                  friend.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  friend.email,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                activeColor: const Color(0xFF2196F3),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                              );
+                            },
+                          ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  // ✅ NEW METHOD - Get user by ID from friends list
+  app_user.User? _getUserById(String id) {
+    try {
+      return _allFriends.firstWhere((friend) => friend.id == id);
+    } catch (e) {
+      return null;
+    }
   }
 
   @override
@@ -662,7 +703,7 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                                           children: _selectedCollaboratorIds
                                               .map((id) {
                                             final user =
-                                                MockUsers.getUserById(id);
+                                                _getUserById(id); // ✅ CHANGED
                                             if (user == null)
                                               return const SizedBox();
 

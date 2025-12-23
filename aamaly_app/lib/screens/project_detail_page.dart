@@ -1,12 +1,15 @@
 // ============================================
-// FILE: lib/screens/project_detail_page.dart (UPDATED WITH STREAMBUILDER)
+// FILE: lib/screens/project_detail_page.dart (WITH COLLABORATORS)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADD THIS
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/project.dart';
 import '../models/task.dart';
+import '../services/friend_service.dart';
+import '../services/firebase_auth_service.dart';
+import '../models/user.dart' as app_user;
 import '../services/task_service.dart';
 import '../services/project_service.dart';
 import '../widgets/edit_project_bottom_sheet.dart';
@@ -25,7 +28,9 @@ class ProjectDetailPage extends StatefulWidget {
 class _ProjectDetailPageState extends State<ProjectDetailPage> {
   final TaskService _taskService = TaskService();
   final ProjectService _projectService = ProjectService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // ✅ ADD THIS
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final _friendService = FriendService(); // ✅ ALREADY THERE
+  final _authService = FirebaseAuthService(); // ✅ ADD THIS
 
   @override
   Widget build(BuildContext context) {
@@ -34,12 +39,18 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
       appBar: AppBar(
         backgroundColor: widget.project.color,
         foregroundColor: Colors.white,
-        elevation: 0, // Remove shadow
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // ✅ MANAGE COLLABORATORS BUTTON
+          IconButton(
+            icon: const Icon(Icons.group),
+            onPressed: _showCollaboratorsDialog,
+            tooltip: 'Manage Collaborators',
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
@@ -77,7 +88,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Project Header (Flat Design - Icon + Name, same as image)
+          // Project Header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -94,21 +105,19 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                 // Icon + Name Row
                 Row(
                   children: [
-                    // Project Icon
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.folder,
                         color: Colors.white,
                         size: 24,
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Project Name
                     Expanded(
                       child: Text(
                         widget.project.name,
@@ -124,14 +133,13 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
                 const SizedBox(height: 20),
 
-                // Stat Cards Row - Real-time updates
+                // Stat Cards Row
                 StreamBuilder<DocumentSnapshot>(
                   stream: _firestore
                       .collection('projects')
                       .doc(widget.project.id)
                       .snapshots(),
                   builder: (context, snapshot) {
-                    // Extract data from snapshot
                     int totalTasks = widget.project.totalTasks;
                     int completedTasks = widget.project.completedTasks;
                     int inProgressTasks = widget.project.inProgressTasks;
@@ -193,7 +201,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    final result = await Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => CreateTaskPage(
@@ -203,9 +211,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                         ),
                       ),
                     );
-
-                    // Task is automatically added via StreamBuilder
-                    // No need to manually refresh!
                   },
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Add Task'),
@@ -221,19 +226,15 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
             ),
           ),
 
-          // ✅ REAL-TIME TASK LIST WITH STREAMBUILDER
+          // Real-time Task List
           Expanded(
             child: StreamBuilder<List<Task>>(
               stream: _taskService.getProjectTasks(widget.project.id),
               builder: (context, snapshot) {
-                // Loading state
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-                // Error state
                 if (snapshot.hasError) {
                   return Center(
                     child: Column(
@@ -249,24 +250,13 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                             color: Colors.grey[600],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          snapshot.error.toString(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
                       ],
                     ),
                   );
                 }
 
-                // Get tasks from snapshot
                 final tasks = snapshot.data ?? [];
 
-                // Empty state
                 if (tasks.isEmpty) {
                   return Center(
                     child: Column(
@@ -298,7 +288,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                   );
                 }
 
-                // Task list
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: tasks.length,
@@ -315,7 +304,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     );
   }
 
-  // Build task card widget (same design as dashboard)
   Widget _buildTaskCard(Task task) {
     final isCompleted = task.status == TaskStatus.completed;
     final daysUntil = task.deadline.difference(DateTime.now()).inDays;
@@ -363,7 +351,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row with Icon
             Row(
               children: [
                 Container(
@@ -417,10 +404,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                 Icon(Icons.more_vert, color: Colors.grey[400]),
               ],
             ),
-
             const SizedBox(height: 12),
-
-            // Status and Priority Badges
             Row(
               children: [
                 Container(
@@ -443,10 +427,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                 _buildPriorityBadge(task.priority),
               ],
             ),
-
             const SizedBox(height: 12),
-
-            // Mark as Done Button
             Align(
               alignment: Alignment.centerRight,
               child: OutlinedButton(
@@ -474,7 +455,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     );
   }
 
-  // Toggle task completion
   Future<void> _toggleTaskCompletion(Task task) async {
     try {
       if (task.status == TaskStatus.completed) {
@@ -504,7 +484,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     }
   }
 
-  // Build stat card widget
   Widget _buildStatCard(IconData icon, String value, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
@@ -542,7 +521,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     );
   }
 
-  // Build priority badge
   Widget _buildPriorityBadge(TaskPriority priority) {
     Color color;
     String label;
@@ -579,7 +557,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     );
   }
 
-  // Implement edit project dialog
   void _showEditProjectDialog() async {
     final updatedProject = await showModalBottomSheet<Project>(
       context: context,
@@ -600,15 +577,10 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     );
 
     if (updatedProject != null) {
-      // Refresh the page with updated project
-      setState(() {
-        // The project will be updated via StreamBuilder if you're using it
-        // Or you can navigate back and pass the updated project
-      });
+      setState(() {});
     }
   }
 
-  // Implement delete project dialog
   void _showDeleteProjectDialog() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -666,7 +638,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
     if (confirmed == true && mounted) {
       try {
-        // Show loading indicator
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -675,16 +646,11 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
           ),
         );
 
-        // ✅ ACTUALLY DELETE FROM FIREBASE
         await ProjectService().deleteProject(widget.project.id);
 
-        // Close loading dialog
+        if (mounted) Navigator.pop(context);
         if (mounted) Navigator.pop(context);
 
-        // Close project detail page and go back to previous screen
-        if (mounted) Navigator.pop(context);
-
-        // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -694,10 +660,8 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
           );
         }
       } catch (e) {
-        // Close loading dialog
         if (mounted) Navigator.pop(context);
 
-        // Show error message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -708,5 +672,387 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
         }
       }
     }
+  }
+
+  // ✅ NEW: COLLABORATORS DIALOG METHODS
+  void _showCollaboratorsDialog() async {
+    try {
+      final collaborators =
+          await _projectService.getProjectCollaborators(widget.project.id);
+      final currentUserId = _authService.currentUserId!;
+      final friends = await _friendService.getFriendsWithDetails(currentUserId);
+
+      final availableFriends = friends
+          .where((friend) =>
+              !widget.project.collaboratorIds.contains(friend.id) &&
+              friend.id != widget.project.ownerId)
+          .toList();
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => _CollaboratorsDialog(
+          project: widget.project,
+          collaborators: collaborators,
+          availableFriends: availableFriends,
+          onInvite: _inviteToProject,
+          onRemove: _removeFromProject,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _inviteToProject(String friendId) async {
+    try {
+      await _projectService.inviteToProject(
+        projectId: widget.project.id,
+        friendId: friendId,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Friend invited to project!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+        _showCollaboratorsDialog();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeFromProject(String userId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Collaborator'),
+        content:
+            const Text('Are you sure you want to remove this collaborator?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _projectService.removeFromProject(
+        projectId: widget.project.id,
+        userId: userId,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Collaborator removed'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+        _showCollaboratorsDialog();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+}
+
+// ✅ NEW: COLLABORATORS DIALOG WIDGET
+class _CollaboratorsDialog extends StatefulWidget {
+  final Project project;
+  final List<app_user.User> collaborators;
+  final List<app_user.User> availableFriends;
+  final Function(String) onInvite;
+  final Function(String) onRemove;
+
+  const _CollaboratorsDialog({
+    required this.project,
+    required this.collaborators,
+    required this.availableFriends,
+    required this.onInvite,
+    required this.onRemove,
+  });
+
+  @override
+  State<_CollaboratorsDialog> createState() => _CollaboratorsDialogState();
+}
+
+class _CollaboratorsDialogState extends State<_CollaboratorsDialog>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        height: 500,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Collaborators',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TabBar(
+              controller: _tabController,
+              indicatorColor: const Color(0xFF2196F3),
+              labelColor: const Color(0xFF2196F3),
+              unselectedLabelColor: Colors.grey,
+              tabs: [
+                Tab(text: 'Members (${widget.collaborators.length + 1})'),
+                Tab(text: 'Invite (${widget.availableFriends.length})'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildMembersTab(),
+                  _buildInviteTab(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMembersTab() {
+    return ListView(
+      children: [
+        _buildMemberCard(
+          name: 'You (Owner)',
+          email: '',
+          isOwner: true,
+          onRemove: null,
+        ),
+        ...widget.collaborators.map((collaborator) => _buildMemberCard(
+              name: collaborator.name,
+              email: collaborator.email,
+              isOwner: false,
+              onRemove: () => widget.onRemove(collaborator.id),
+            )),
+        if (widget.collaborators.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              children: [
+                Icon(Icons.people_outline, size: 48, color: Colors.grey[400]),
+                const SizedBox(height: 12),
+                Text(
+                  'No collaborators yet',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Invite friends from the next tab',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMemberCard({
+    required String name,
+    required String email,
+    required bool isOwner,
+    VoidCallback? onRemove,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: isOwner ? Colors.orange : const Color(0xFF2196F3),
+            child: Icon(
+              isOwner ? Icons.star : Icons.person,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (email.isNotEmpty)
+                  Text(
+                    email,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+              ],
+            ),
+          ),
+          if (!isOwner && onRemove != null)
+            IconButton(
+              icon: const Icon(Icons.close, size: 20, color: Colors.red),
+              onPressed: onRemove,
+              tooltip: 'Remove',
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInviteTab() {
+    if (widget.availableFriends.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_add_disabled, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 12),
+            Text(
+              'No friends to invite',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'All your friends are already collaborators',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: widget.availableFriends.length,
+      itemBuilder: (context, index) {
+        final friend = widget.availableFriends[index];
+        return _buildInviteCard(friend);
+      },
+    );
+  }
+
+  Widget _buildInviteCard(app_user.User friend) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: const Color(0xFF2196F3),
+            child: Text(
+              friend.initials,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  friend.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  friend.email,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => widget.onInvite(friend.id),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Invite'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

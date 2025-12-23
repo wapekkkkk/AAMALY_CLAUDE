@@ -1,12 +1,12 @@
 // ============================================
-// FILE: lib/models/user.dart (MERGED VERSION)
+// FILE: lib/models/user.dart (UPDATED WITH fromMap)
 // ============================================
 
 class User {
   final String id;
   final String name;
   final String email;
-  final String? profileImage; // Keep your existing field
+  final String? profileImage;
   final bool isOnline;
   final DateTime? lastActive;
   final String qrCode;
@@ -20,6 +20,33 @@ class User {
     this.lastActive,
     required this.qrCode,
   });
+
+  // ✅ ADD THIS METHOD - For Firestore
+  factory User.fromMap(Map<String, dynamic> map, String id) {
+    return User(
+      id: id,
+      name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      profileImage: map['profileImage'],
+      isOnline: map['isOnline'] ?? false,
+      lastActive: map['lastActive'] != null
+          ? (map['lastActive'] as dynamic).toDate()
+          : null,
+      qrCode: map['qrCode'] ?? '',
+    );
+  }
+
+  // ✅ ADD THIS METHOD - For Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'email': email,
+      'profileImage': profileImage,
+      'isOnline': isOnline,
+      'lastActive': lastActive,
+      'qrCode': qrCode,
+    };
+  }
 
   // Get initials for avatar (e.g., "Ahmad Student" -> "AS")
   String get initials {

@@ -17,7 +17,7 @@ import 'project_detail_page.dart';
 import 'calendar_page.dart';
 import 'create_project_page.dart';
 import 'search_page.dart';
-import 'collaborators_page.dart';
+import 'friends_page.dart';
 import '../data/mock_users.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -55,7 +55,7 @@ class _DashboardPageState extends State<DashboardPage> {
       case 3: // Collaborators
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const CollaboratorsPage()),
+          MaterialPageRoute(builder: (context) => const FriendsPage()),
         );
         break;
       case 4: // Search

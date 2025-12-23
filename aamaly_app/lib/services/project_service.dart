@@ -6,6 +6,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/project.dart';
+import '../models/user.dart' as app_user;
 
 class ProjectService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -235,6 +236,114 @@ class ProjectService {
       });
     } catch (e) {
       throw Exception('Failed to update project stats: $e');
+    }
+  }
+
+  Future<List<app_user.User>> getProjectCollaborators(String projectId) async {
+    try {
+      final project = await getProjectById(projectId);
+
+      if (project == null || project.collaboratorIds.isEmpty) {
+        return [];
+      }
+
+      final collaborators = <app_user.User>[];
+
+      for (final userId in project.collaboratorIds) {
+        final userDoc = await _firestore.collection('users').doc(userId).get();
+
+        if (userDoc.exists) {
+          collaborators.add(app_user.User.fromMap(userDoc.data()!, userDoc.id));
+        }
+      }
+
+      return collaborators;
+    } catch (e) {
+      throw Exception('Failed to get collaborators: $e');
+    }
+  }
+
+  /// Invite friend to project
+  Future<void> inviteToProject({
+    required String projectId,
+    required String friendId,
+  }) async {
+    try {
+      // Check if already a collaborator
+      final project = await getProjectById(projectId);
+
+      if (project == null) {
+        throw Exception('Project not found');
+      }
+
+      if (project.collaboratorIds.contains(friendId)) {
+        throw Exception('User is already a collaborator');
+      }
+
+      // Add to collaborators
+      await addCollaborator(projectId, friendId);
+    } catch (e) {
+      throw Exception('Failed to invite to project: $e');
+    }
+  }
+
+  /// Remove collaborator from project
+  Future<void> removeFromProject({
+    required String projectId,
+    required String userId,
+  }) async {
+    try {
+      await removeCollaborator(projectId, userId);
+    } catch (e) {
+      throw Exception('Failed to remove from project: $e');
+    }
+  }
+
+  /// Leave project (user removes themselves)
+  Future<void> leaveProject({
+    required String projectId,
+    required String userId,
+  }) async {
+    try {
+      final project = await getProjectById(projectId);
+
+      if (project == null) {
+        throw Exception('Project not found');
+      }
+
+      // Can't leave if you're the owner
+      if (project.ownerId == userId) {
+        throw Exception('Project owner cannot leave the project');
+      }
+
+      await removeCollaborator(projectId, userId);
+    } catch (e) {
+      throw Exception('Failed to leave project: $e');
+    }
+  }
+
+  /// Check if user is collaborator
+  Future<bool> isCollaborator(String projectId, String userId) async {
+    try {
+      final project = await getProjectById(projectId);
+      return project?.collaboratorIds.contains(userId) ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get user role in project
+  Future<String> getUserRole(String projectId, String userId) async {
+    try {
+      final project = await getProjectById(projectId);
+
+      if (project == null) return 'none';
+      if (project.ownerId == userId) return 'owner';
+      if (project.collaboratorIds.contains(userId)) return 'collaborator';
+
+      return 'none';
+    } catch (e) {
+      return 'none';
     }
   }
 }
