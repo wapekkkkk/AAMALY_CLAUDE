@@ -9,6 +9,7 @@ import '../models/project.dart';
 import '../models/task.dart';
 import '../services/friend_service.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/permissions_service.dart'; // ✅ NEW
 import '../models/user.dart' as app_user;
 import '../services/task_service.dart';
 import '../services/project_service.dart';
@@ -308,6 +309,9 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     final isCompleted = task.status == TaskStatus.completed;
     final daysUntil = task.deadline.difference(DateTime.now()).inDays;
 
+    // ✅ GET CURRENT USER
+    final currentUserId = _authService.currentUserId ?? '';
+
     Color statusColor;
     String statusLabel;
 
@@ -324,6 +328,13 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
         statusColor = Colors.orange;
         statusLabel = 'To Do';
     }
+
+    // ✅ CHECK PERMISSION: Can this user mark task as done?
+    final canMarkDone = PermissionsService.canMarkAsDone(
+        task: task,
+        userId: currentUserId,
+        projectOwnerId: widget.project.ownerId,
+        projectCollaboratorIds: widget.project.collaboratorIds);
 
     return GestureDetector(
       onTap: () {
@@ -404,7 +415,86 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                 Icon(Icons.more_vert, color: Colors.grey[400]),
               ],
             ),
+
             const SizedBox(height: 12),
+
+            // ✅ NEW: Assignee Display
+            if (task.assignedToUserId != null)
+              FutureBuilder<app_user.User?>(
+                future: _getAssignedUser(task.assignedToUserId!),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox.shrink();
+                  }
+
+                  if (snapshot.hasData && snapshot.data != null) {
+                    final assignee = snapshot.data!;
+                    final currentUserId = _authService.currentUserId;
+                    final isAssignedToMe = assignee.id == currentUserId;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isAssignedToMe ? Colors.blue[50] : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isAssignedToMe
+                              ? Colors.blue[200]!
+                              : Colors.grey[300]!,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor: isAssignedToMe
+                                ? const Color(0xFF2196F3)
+                                : Colors.grey[600],
+                            child: Text(
+                              assignee.initials,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.person,
+                            size: 14,
+                            color: isAssignedToMe
+                                ? Colors.blue[700]
+                                : Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isAssignedToMe
+                                ? 'Assigned to You'
+                                : 'Assigned to ${assignee.name}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isAssignedToMe
+                                  ? Colors.blue[700]
+                                  : Colors.grey[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return const SizedBox.shrink();
+                },
+              ),
+
             Row(
               children: [
                 Container(
@@ -427,27 +517,62 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                 _buildPriorityBadge(task.priority),
               ],
             ),
+
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton(
-                onPressed: () => _toggleTaskCompletion(task),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: isCompleted ? Colors.orange : Colors.green,
-                  side: BorderSide(
-                      color: isCompleted ? Colors.orange : Colors.green),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+
+            // ✅ UPDATED: Mark as Done Button with Permission Check
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // ✅ Show permission indicator if user can't mark as done
+                if (!canMarkDone)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.lock_outline,
+                        size: 14,
+                        color: Colors.grey[500],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'View only',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                const Spacer(),
+                // ✅ Button enabled/disabled based on permission
+                OutlinedButton(
+                  onPressed: canMarkDone
+                      ? () => _toggleTaskCompletion(task)
+                      : null, // ← null disables button
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isCompleted ? Colors.orange : Colors.green,
+                    side: BorderSide(
+                      color: isCompleted ? Colors.orange : Colors.green,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    // ✅ Gray out button if disabled
+                    disabledForegroundColor: Colors.grey,
+                    disabledBackgroundColor: Colors.grey[100],
+                  ),
+                  child: Text(
+                    isCompleted ? 'Mark as In Progress' : 'Mark as Done',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-                child: Text(
-                  isCompleted ? 'Mark as In Progress' : 'Mark as Done',
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-              ),
+              ],
             ),
           ],
         ),
@@ -456,6 +581,27 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   }
 
   Future<void> _toggleTaskCompletion(Task task) async {
+    final currentUserId = _authService.currentUserId ?? '';
+
+    // ✅ DOUBLE CHECK: Verify user has permission
+    final canMarkDone = PermissionsService.canMarkAsDone(
+        task: task,
+        userId: currentUserId,
+        projectOwnerId: widget.project.ownerId,
+        projectCollaboratorIds: widget.project.collaboratorIds);
+
+    if (!canMarkDone) {
+      // ✅ Show error if no permission
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('You don\'t have permission to change this task status'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       if (task.status == TaskStatus.completed) {
         await TaskService().markAsInProgress(task.id);
@@ -788,6 +934,23 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
         );
       }
     }
+  }
+
+  // ✅ NEW: Helper method to get assigned user info
+  Future<app_user.User?> _getAssignedUser(String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (doc.exists) {
+        return app_user.User.fromMap(doc.data()!, doc.id);
+      }
+    } catch (e) {
+      print('Error getting assigned user: $e');
+    }
+    return null;
   }
 }
 

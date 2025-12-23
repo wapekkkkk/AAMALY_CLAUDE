@@ -1,5 +1,5 @@
 // ============================================
-// FILE: lib/screens/dashboard_page.dart (UPDATED WITH PROJECT COLORS)
+// FILE: lib/screens/dashboard_page.dart (UPDATED - Shows My Tasks Only)
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -196,9 +196,9 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
 
-            // Filter Tabs with Real-time Counts
+            // ✅ UPDATED: Filter Tabs with getMyTasks
             StreamBuilder<List<Task>>(
-              stream: _taskService.getAllUserTasks(userId),
+              stream: _taskService.getMyTasks(userId), // ✅ CHANGED
               builder: (context, snapshot) {
                 final tasks = snapshot.data ?? [];
                 final inProgressCount = tasks
@@ -317,7 +317,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
 
-            // ✅ UPDATED: Task List with NESTED StreamBuilder
+            // ✅ UPDATED: Task List with getMyTasks
             Expanded(
               child: StreamBuilder<List<Project>>(
                 stream: _projectService.getAllUserProjects(userId),
@@ -325,7 +325,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   final projects = projectSnapshot.data ?? [];
 
                   return StreamBuilder<List<Task>>(
-                    stream: _taskService.getAllUserTasks(userId),
+                    stream: _taskService.getMyTasks(userId), // ✅ CHANGED
                     builder: (context, taskSnapshot) {
                       if (taskSnapshot.connectionState ==
                           ConnectionState.waiting) {
@@ -393,7 +393,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: displayTasks.length,
                         itemBuilder: (context, index) {
-                          // ✅ NOW PASS PROJECTS
                           return _buildTaskCard(displayTasks[index], projects);
                         },
                       );
@@ -613,12 +612,10 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ✅ UPDATED: Now accepts projects list
   Widget _buildTaskCard(Task task, List<Project> projects) {
     final isCompleted = task.status == TaskStatus.completed;
     final daysUntil = task.deadline.difference(DateTime.now()).inDays;
 
-    // ✅ GET PROJECT COLOR
     Project? project;
     try {
       project = projects.firstWhere(
@@ -628,7 +625,6 @@ class _DashboardPageState extends State<DashboardPage> {
       project = null;
     }
 
-    // ✅ Use project color or default blue
     final projectColor = project?.color ?? const Color(0xFF2196F3);
 
     Color statusColor;
@@ -676,7 +672,6 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             Row(
               children: [
-                // ✅ ICON WITH PROJECT COLOR
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -728,7 +723,6 @@ class _DashboardPageState extends State<DashboardPage> {
             const SizedBox(height: 12),
             Row(
               children: [
-                // Status badge
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -746,7 +740,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // ✅ PROJECT BADGE WITH PROJECT COLOR
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

@@ -1,5 +1,5 @@
 // ============================================
-// FILE: lib/services/task_service.dart
+// FILE: lib/services/task_service.dart (UPDATED)
 // REAL FIRESTORE TASK SERVICE
 // ============================================
 
@@ -86,6 +86,29 @@ class TaskService {
           .map((doc) => _taskFromFirestore(doc))
           .toList()
         ..sort((a, b) => a.deadline.compareTo(b.deadline));
+    });
+  }
+
+  // ✅ NEW: GET MY TASKS (created by me OR assigned to me)
+  // This is the recommended method for dashboard - clearer name than getAllUserTasks
+  Stream<List<Task>> getMyTasks(String userId) {
+    return _firestore.collection('tasks').snapshots().map((snapshot) {
+      final myTasks = snapshot.docs
+          .where((doc) {
+            final data = doc.data();
+            final createdBy = data['createdBy'] as String?;
+            final assignedTo = data['assignedToUserId'] as String?;
+
+            // Show if user created it OR assigned to them
+            return createdBy == userId || assignedTo == userId;
+          })
+          .map((doc) => _taskFromFirestore(doc))
+          .toList();
+
+      // Sort by deadline (nearest first)
+      myTasks.sort((a, b) => a.deadline.compareTo(b.deadline));
+
+      return myTasks;
     });
   }
 
