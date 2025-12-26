@@ -10,6 +10,7 @@ import '../services/friend_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../utils/logger.dart';
 import '../utils/error_handler.dart';
+import 'friend_profile_page.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({Key? key}) : super(key: key);
@@ -660,8 +661,12 @@ class _FriendsPageState extends State<FriendsPage>
               if (value == 'remove') {
                 _removeFriend(friend);
               } else if (value == 'profile') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Profile coming soon!')),
+                // ✅ UPDATED: Navigate to Friend Profile
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FriendProfilePage(friend: friend),
+                  ),
                 );
               }
             },

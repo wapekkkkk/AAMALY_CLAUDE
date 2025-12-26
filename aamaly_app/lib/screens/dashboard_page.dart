@@ -19,6 +19,7 @@ import 'create_project_page.dart';
 import 'search_page.dart';
 import 'friends_page.dart';
 import '../data/mock_users.dart';
+import 'profile_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -117,6 +118,7 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Column(
           children: [
             // Header
+// Header
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Row(
@@ -143,52 +145,19 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ],
                   ),
+                  // ✅ UPDATED: Navigate to Profile instead of Logout
                   CircleAvatar(
                     radius: 24,
                     backgroundColor: const Color(0xFF2196F3),
                     child: IconButton(
                       icon: const Icon(Icons.person, color: Colors.white),
-                      onPressed: () async {
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Logout'),
-                            content:
-                                const Text('Are you sure you want to logout?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancel'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                ),
-                                child: const Text('Logout'),
-                              ),
-                            ],
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ProfilePage(),
                           ),
                         );
-
-                        if (confirmed == true && mounted) {
-                          try {
-                            await _authService.logout();
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => const LoginPage(),
-                              ),
-                              (route) => false,
-                            );
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Logout failed: $e'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
                       },
                     ),
                   ),

@@ -42,16 +42,16 @@ android {
 
     defaultConfig {
         applicationId = "com.aamaly.app"
-        minSdk = flutter.minSdkVersion  // Firebase requires minimum 21
+        minSdk = flutter.minSdkVersion
         targetSdk = 34
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
-        multiDexEnabled = true  // Important for Firebase
+        multiDexEnabled = true
     }
 
     buildTypes {
-        getByName("release") {
-            signingConfig = signingConfigs.getByName("debug")
+        release {
+            signingConfig = signingConfigs.debug
         }
     }
 }
@@ -61,9 +61,7 @@ flutter {
 }
 
 dependencies {
-    // MultiDex support for Firebase
     implementation("androidx.multidex:multidex:2.0.1")
 }
 
-// ADD THIS AT THE BOTTOM - IMPORTANT!
-apply(plugin = "com.google.gms.google-services")
+apply plugin: "com.google.gms.google-services"
