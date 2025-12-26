@@ -11,6 +11,8 @@ import '../services/firebase_auth_service.dart';
 import '../utils/logger.dart';
 import '../utils/error_handler.dart';
 import 'friend_profile_page.dart';
+import '../widgets/qr_code_display.dart'; // ✅ ADD
+import 'qr_scanner_page.dart'; // ✅ ADD
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({Key? key}) : super(key: key);
@@ -291,43 +293,10 @@ class _FriendsPageState extends State<FriendsPage>
   }
 
   void _showQRScanner() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('QR Scanner'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              height: 200,
-              width: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.qr_code_scanner, size: 64, color: Colors.grey),
-                    SizedBox(height: 12),
-                    Text(
-                      'QR Scanner\nComing Soon!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const QRScannerPage(),
       ),
     );
   }
@@ -335,62 +304,14 @@ class _FriendsPageState extends State<FriendsPage>
   void _showMyQRCode() {
     final currentUser = _authService.currentUser;
 
+    if (currentUser == null) return;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('My QR Code'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    height: 200,
-                    width: 200,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                      child:
-                          Icon(Icons.qr_code_2, size: 120, color: Colors.grey),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    currentUser?.name ?? 'User',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    currentUser?.email ?? '',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Ask your friend to scan this code',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
+      builder: (context) => QRCodeDisplay(
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
       ),
     );
   }

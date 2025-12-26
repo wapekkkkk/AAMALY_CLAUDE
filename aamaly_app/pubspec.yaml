@@ -19,6 +19,10 @@ dependencies:
   # Date & Time
   intl: ^0.18.1
   
+  # ✅ ADD THESE FOR QR FEATURES:
+  qr_flutter: ^4.1.0           # QR Code Generator
+  mobile_scanner: ^5.2.3       # QR Code Scanner (latest version)
+  
   # Icons
   flutter_svg: ^2.0.9
   
