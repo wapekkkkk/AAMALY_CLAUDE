@@ -6,6 +6,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/project.dart';
+import 'notification_service.dart'; // ✅ ADD
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADD (if not already there)
 import '../models/user.dart' as app_user;
 
 class ProjectService {
@@ -191,12 +193,32 @@ class ProjectService {
     }
   }
 
-  // ADD COLLABORATOR
+// ADD COLLABORATOR
   Future<void> addCollaborator(String projectId, String userId) async {
     try {
+      // Get project details
+      final projectDoc =
+          await _firestore.collection('projects').doc(projectId).get();
+      final projectName = projectDoc.data()?['name'] ?? 'Unknown Project';
+
+      // Get current user (inviter) details
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      final inviterDoc =
+          await _firestore.collection('users').doc(currentUserId).get();
+      final inviterName = inviterDoc.data()?['name'] ?? 'Someone';
+
+      // Add collaborator to project
       await _firestore.collection('projects').doc(projectId).update({
         'collaboratorIds': FieldValue.arrayUnion([userId]),
       });
+
+      // ✅ SEND NOTIFICATION
+      await NotificationService().sendProjectInviteNotification(
+        toUserId: userId,
+        projectName: projectName,
+        projectId: projectId,
+        invitedByName: inviterName,
+      );
     } catch (e) {
       throw Exception('Failed to add collaborator: $e');
     }

@@ -6,6 +6,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/friend_request.dart';
 import '../models/user.dart' as app_user;
+import 'notification_service.dart'; // ✅ ADD THIS
 import '../utils/logger.dart';
 import '../utils/error_handler.dart';
 
@@ -53,7 +54,15 @@ class FriendService {
 
       Logger.database('CREATE', 'friendRequests', docRef.id);
       Logger.success('Friend request sent', 'FriendService');
+// ✅ SEND NOTIFICATION
+      final senderDoc =
+          await _firestore.collection('users').doc(senderId).get();
+      final senderName = senderDoc.data()?['name'] ?? 'Someone';
 
+      await NotificationService().sendFriendRequestNotification(
+        toUserId: receiverId,
+        fromUserName: senderName,
+      );
       return docRef.id;
     } catch (e) {
       Logger.error('Failed to send friend request', e);
@@ -91,6 +100,16 @@ class FriendService {
       // Add to both users' friends lists
       await _addToFriendsList(request.fromUserId, request.toUserId);
       await _addToFriendsList(request.toUserId, request.fromUserId);
+
+      // ✅ SEND NOTIFICATION (INSIDE TRY-CATCH)
+      final accepterDoc =
+          await _firestore.collection('users').doc(request.toUserId).get();
+      final accepterName = accepterDoc.data()?['name'] ?? 'Someone';
+
+      await NotificationService().sendFriendAcceptedNotification(
+        toUserId: request.fromUserId,
+        acceptedByName: accepterName,
+      );
 
       Logger.success('Friend request accepted', 'FriendService');
     } catch (e) {

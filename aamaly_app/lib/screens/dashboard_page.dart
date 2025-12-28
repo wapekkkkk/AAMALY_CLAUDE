@@ -1,5 +1,5 @@
 // ============================================
-// FILE: lib/screens/dashboard_page.dart (UPDATED - Shows My Tasks Only)
+// FILE: lib/screens/dashboard_page.dart (UPDATED - Scrollable Projects & Tasks)
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -17,6 +17,8 @@ import 'create_project_page.dart';
 import 'search_page.dart';
 import 'friends_page.dart';
 import 'profile_page.dart';
+import 'notifications_page.dart';
+import '../services/notification_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -114,8 +116,7 @@ class _DashboardPageState extends State<DashboardPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-// Header
+            // ✅ FIXED HEADER - Not scrollable
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Row(
@@ -142,29 +143,88 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ],
                   ),
-                  // ✅ UPDATED: Navigate to Profile instead of Logout
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: const Color(0xFF2196F3),
-                    child: IconButton(
-                      icon: const Icon(Icons.person, color: Colors.white),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ProfilePage(),
-                          ),
-                        );
-                      },
-                    ),
+                  // Notification Bell + Profile
+                  Row(
+                    children: [
+                      // Notification Bell with Badge
+                      StreamBuilder<int>(
+                        stream: NotificationService().getUnreadCount(userId),
+                        builder: (context, snapshot) {
+                          final unreadCount = snapshot.data ?? 0;
+
+                          return Stack(
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.notifications_outlined,
+                                  size: 28,
+                                ),
+                                color: const Color(0xFF1A1A2E),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const NotificationsPage(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  right: 6,
+                                  top: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 18,
+                                      minHeight: 18,
+                                    ),
+                                    child: Text(
+                                      unreadCount > 9 ? '9+' : '$unreadCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      // Profile Icon
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: const Color(0xFF2196F3),
+                        child: IconButton(
+                          icon: const Icon(Icons.person, color: Colors.white),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ProfilePage(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            // ✅ UPDATED: Filter Tabs with getMyTasks
+            // ✅ FIXED FILTER TABS - Not scrollable
             StreamBuilder<List<Task>>(
-              stream: _taskService.getMyTasks(userId), // ✅ CHANGED
+              stream: _taskService.getMyTasks(userId),
               builder: (context, snapshot) {
                 final tasks = snapshot.data ?? [];
                 final inProgressCount = tasks
@@ -191,180 +251,216 @@ class _DashboardPageState extends State<DashboardPage> {
 
             const SizedBox(height: 20),
 
-            // Project Cards (Real-time from Firestore)
-            StreamBuilder<List<Project>>(
-              stream: _projectService.getAllUserProjects(userId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(
-                    height: 200,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
+            // ✅ SCROLLABLE CONTENT - Projects and Tasks together
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ✅ PROJECT SECTION - Scrollable vertically, horizontal list
+                    StreamBuilder<List<Project>>(
+                      stream: _projectService.getAllUserProjects(userId),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const SizedBox(
+                            height: 200,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
 
-                final projects = snapshot.data ?? [];
+                        final projects = snapshot.data ?? [];
 
-                if (projects.isEmpty) {
-                  return SizedBox(
-                    height: 200,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        if (projects.isEmpty) {
+                          return Container(
+                            height: 200,
+                            margin: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.folder_open,
+                                      size: 48, color: Colors.grey[400]),
+                                  const SizedBox(height: 12),
+                                  Text('No projects yet',
+                                      style:
+                                          TextStyle(color: Colors.grey[600])),
+                                  const SizedBox(height: 8),
+                                  ElevatedButton.icon(
+                                    onPressed: () async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const CreateProjectPage(),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Create Project'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF2196F3),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return SizedBox(
+                          height: 200,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: projects.length,
+                            itemBuilder: (context, index) {
+                              return _buildProjectCard(projects[index], index);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ✅ TASK SECTION TITLE
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(Icons.folder_open,
-                              size: 48, color: Colors.grey[400]),
-                          const SizedBox(height: 12),
-                          Text('No projects yet',
-                              style: TextStyle(color: Colors.grey[600])),
-                          const SizedBox(height: 8),
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              await Navigator.push(
+                          const Text(
+                            'Tasks',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1A1A2E),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      const CreateProjectPage(),
-                                ),
+                                    builder: (context) => const SearchPage()),
                               );
                             },
-                            icon: const Icon(Icons.add),
-                            label: const Text('Create Project'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2196F3),
-                            ),
+                            child: const Text('View All'),
                           ),
                         ],
                       ),
                     ),
-                  );
-                }
 
-                return SizedBox(
-                  height: 200,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: projects.length,
-                    itemBuilder: (context, index) {
-                      return _buildProjectCard(projects[index], index);
-                    },
-                  ),
-                );
-              },
-            ),
+                    // ✅ TASK LIST - Scrollable vertically with projects
+                    StreamBuilder<List<Project>>(
+                      stream: _projectService.getAllUserProjects(userId),
+                      builder: (context, projectSnapshot) {
+                        final projects = projectSnapshot.data ?? [];
 
-            const SizedBox(height: 24),
+                        return StreamBuilder<List<Task>>(
+                          stream: _taskService.getMyTasks(userId),
+                          builder: (context, taskSnapshot) {
+                            if (taskSnapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Padding(
+                                padding: EdgeInsets.all(40.0),
+                                child:
+                                    Center(child: CircularProgressIndicator()),
+                              );
+                            }
 
-            // Task Section Title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Tasks',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const SearchPage()),
-                      );
-                    },
-                    child: const Text('View All'),
-                  ),
-                ],
-              ),
-            ),
-
-            // ✅ UPDATED: Task List with getMyTasks
-            Expanded(
-              child: StreamBuilder<List<Project>>(
-                stream: _projectService.getAllUserProjects(userId),
-                builder: (context, projectSnapshot) {
-                  final projects = projectSnapshot.data ?? [];
-
-                  return StreamBuilder<List<Task>>(
-                    stream: _taskService.getMyTasks(userId), // ✅ CHANGED
-                    builder: (context, taskSnapshot) {
-                      if (taskSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      if (taskSnapshot.hasError) {
-                        return Center(
-                          child: Text('Error: ${taskSnapshot.error}'),
-                        );
-                      }
-
-                      var tasks = taskSnapshot.data ?? [];
-
-                      // Apply filter
-                      if (_selectedFilter == 'in_progress') {
-                        tasks = tasks
-                            .where((t) => t.status == TaskStatus.inProgress)
-                            .toList();
-                      } else if (_selectedFilter == 'completed') {
-                        tasks = tasks
-                            .where((t) => t.status == TaskStatus.completed)
-                            .toList();
-                      }
-
-                      if (tasks.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.inbox,
-                                  size: 64, color: Colors.grey[400]),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No tasks found',
-                                style: TextStyle(
-                                    fontSize: 16, color: Colors.grey[600]),
-                              ),
-                              const SizedBox(height: 8),
-                              ElevatedButton.icon(
-                                onPressed: () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const CreateTaskPage(),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.add),
-                                label: const Text('Create Task'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF2196F3),
+                            if (taskSnapshot.hasError) {
+                              return Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Center(
+                                  child: Text('Error: ${taskSnapshot.error}'),
                                 ),
-                              ),
-                            ],
-                          ),
+                              );
+                            }
+
+                            var tasks = taskSnapshot.data ?? [];
+
+                            // Apply filter
+                            if (_selectedFilter == 'in_progress') {
+                              tasks = tasks
+                                  .where(
+                                      (t) => t.status == TaskStatus.inProgress)
+                                  .toList();
+                            } else if (_selectedFilter == 'completed') {
+                              tasks = tasks
+                                  .where(
+                                      (t) => t.status == TaskStatus.completed)
+                                  .toList();
+                            }
+
+                            if (tasks.isEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(40.0),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.inbox,
+                                          size: 64, color: Colors.grey[400]),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'No tasks found',
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            color: Colors.grey[600]),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ElevatedButton.icon(
+                                        onPressed: () async {
+                                          await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const CreateTaskPage(),
+                                            ),
+                                          );
+                                        },
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Create Task'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFF2196F3),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+
+                            // Show only first 5 tasks
+                            final displayTasks = tasks.take(5).toList();
+
+                            return ListView.builder(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              shrinkWrap:
+                                  true, // ✅ IMPORTANT: Allows ListView inside ScrollView
+                              physics:
+                                  const NeverScrollableScrollPhysics(), // ✅ Disable ListView scroll
+                              itemCount: displayTasks.length,
+                              itemBuilder: (context, index) {
+                                return _buildTaskCard(
+                                    displayTasks[index], projects);
+                              },
+                            );
+                          },
                         );
-                      }
+                      },
+                    ),
 
-                      // Show only first 5 tasks
-                      final displayTasks = tasks.take(5).toList();
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: displayTasks.length,
-                        itemBuilder: (context, index) {
-                          return _buildTaskCard(displayTasks[index], projects);
-                        },
-                      );
-                    },
-                  );
-                },
+                    // ✅ Bottom padding for better scrolling experience
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ],

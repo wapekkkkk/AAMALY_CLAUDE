@@ -4,7 +4,7 @@
 // ============================================
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'notification_service.dart';
 import '../models/task.dart';
 import 'project_service.dart';
 
@@ -12,7 +12,7 @@ class TaskService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ProjectService _projectService = ProjectService();
 
-  // CREATE TASK
+// CREATE TASK
   Future<String> createTask({
     required String title,
     required String description,
@@ -42,6 +42,21 @@ class TaskService {
       // Update project stats if projectId exists
       if (projectId != null) {
         await _projectService.updateProjectStats(projectId);
+      }
+
+      // ✅ SEND NOTIFICATION if task is assigned
+      if (assignedToUserId != null && assignedToUserId.isNotEmpty) {
+        final creatorDoc =
+            await _firestore.collection('users').doc(createdBy).get();
+        final creatorName = creatorDoc.data()?['name'] ?? 'Someone';
+
+        await NotificationService().sendTaskAssignedNotification(
+          toUserId: assignedToUserId,
+          taskTitle: title,
+          taskId: docRef.id,
+          projectName: projectName,
+          assignedByName: creatorName,
+        );
       }
 
       return docRef.id;
