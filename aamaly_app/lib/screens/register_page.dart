@@ -5,6 +5,8 @@
 import 'package:flutter/material.dart';
 import '../services/firebase_auth_service.dart';
 import 'dashboard_page.dart';
+import '../services/admin_service.dart';
+import 'admin_dashboard_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -55,9 +57,16 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         );
 
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardPage()),
-        );
+        // ✅ CHECK IF ADMIN
+        if (AdminService.isAdmin(_emailController.text.trim())) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const AdminDashboardPage()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DashboardPage()),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

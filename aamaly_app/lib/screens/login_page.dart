@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../services/firebase_auth_service.dart';
 import 'dashboard_page.dart';
 import 'register_page.dart';
+import '../services/admin_service.dart'; // ✅ ADD
+import 'admin_dashboard_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -29,13 +31,20 @@ class _LoginPageState extends State<LoginPage> {
     _checkAutoLogin();
   }
 
-  // Check if user is already logged in
+// Check if user is already logged in
   Future<void> _checkAutoLogin() async {
     final user = await _authService.autoLogin();
     if (user != null && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const DashboardPage()),
-      );
+      // ✅ CHECK IF ADMIN
+      if (AdminService.isAdmin(user.email)) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const AdminDashboardPage()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const DashboardPage()),
+        );
+      }
     }
   }
 
@@ -51,9 +60,16 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardPage()),
-        );
+        // ✅ CHECK IF ADMIN
+        if (AdminService.isAdmin(_emailController.text.trim())) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const AdminDashboardPage()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DashboardPage()),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
