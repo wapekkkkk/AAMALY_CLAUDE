@@ -9,16 +9,13 @@ import '../models/project.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/project_service.dart';
 import '../services/task_service.dart';
-import 'login_page.dart';
 import 'task_detail_page.dart';
 import 'create_task_page.dart';
-import 'project_list_page.dart';
 import 'project_detail_page.dart';
 import 'calendar_page.dart';
 import 'create_project_page.dart';
 import 'search_page.dart';
 import 'friends_page.dart';
-import '../data/mock_users.dart';
 import 'profile_page.dart';
 
 class DashboardPage extends StatefulWidget {
