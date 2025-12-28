@@ -1,12 +1,12 @@
 // ============================================
-// FILE: lib/screens/login_page.dart (UPDATED WITH REAL AUTH)
+// FILE: lib/screens/login_page.dart (UI UPDATED ONLY - FUNCTIONS UNCHANGED)
 // ============================================
 
 import 'package:flutter/material.dart';
 import '../services/firebase_auth_service.dart';
 import 'dashboard_page.dart';
 import 'register_page.dart';
-import '../services/admin_service.dart'; // ✅ ADD
+import '../services/admin_service.dart';
 import 'admin_dashboard_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
     _checkAutoLogin();
   }
 
-// Check if user is already logged in
+  // Check if user is already logged in
   Future<void> _checkAutoLogin() async {
     final user = await _authService.autoLogin();
     if (user != null && mounted) {
@@ -101,99 +101,86 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    const purple = Color(0xFF7C4DFF);
+
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              const Color(0xFF2196F3),
-              const Color(0xFF2196F3).withOpacity(0.7),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      body: Stack(
+        children: [
+          // ✅ Background image (replace path with your own image)
+
+          Positioned.fill(
+              child: Image.asset(
+            'assets/images/bg_aamaly.jpg',
+            fit: BoxFit.cover,
+          )),
+
+          // Optional: light overlay to keep the card readable (you can remove if not needed)
+          Positioned.fill(
+            child: Container(
+              color: Colors.white.withOpacity(0.10),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-// Logo/Title
-                  Container(
-                    padding: const EdgeInsets.all(20),
+
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 22,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/images/logoaamaly.png',
-                      width: 180, // controls logo size inside the circle
-                      height: 180,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-// App Name (image instead of Text)
-                  Image.asset(
-                    'assets/images/logonamaaamaly.png',
-                    height: 60,
-                    fit: BoxFit.contain,
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    'Smart Task Management System',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-
-                  const SizedBox(height: 48),
-
-                  // Login Form
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 24,
+                          offset: const Offset(0, 12),
                         ),
                       ],
                     ),
                     child: Form(
                       key: _formKey,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          const Text(
+                            'Welcome back!',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Enter your credentials to access your account',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+
                           // Email Field
                           TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             decoration: InputDecoration(
-                              labelText: 'Email',
+                              labelText: 'Email address*',
                               hintText: 'your.email@iium.edu.my',
-                              prefixIcon: const Icon(Icons.email_outlined),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               filled: true,
-                              fillColor: Colors.grey[50],
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -206,15 +193,47 @@ class _LoginPageState extends State<LoginPage> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
+
+                          // Password label row (to match design spacing)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Password*',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              // UI only (no function attached)
+                              Text(
+                                'forgot password',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
 
                           // Password Field
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
                             decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock_outline),
+                              hintText: '••••••••',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword
@@ -227,11 +246,6 @@ class _LoginPageState extends State<LoginPage> {
                                   });
                                 },
                               ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey[50],
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -243,51 +257,88 @@ class _LoginPageState extends State<LoginPage> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 10),
 
-                          // Login Button
-                          ElevatedButton(
-                            onPressed: _isLoading ? null : _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2196F3),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                          // Remember me (UI only)
+                          Row(
+                            children: [
+                              SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: Checkbox(
+                                  value: false,
+                                  onChanged: (_) {},
+                                ),
                               ),
-                              elevation: 2,
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    ),
-                                  )
-                                : const Text(
-                                    'Login',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Remember me',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
 
-                          // Register Link
+                          const SizedBox(height: 14),
+
+                          // Login Button (PURPLE)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: purple,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Login',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Bottom Register Link (same function)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text("Don't have an account? "),
+                              Text(
+                                "Don't have an account? ",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
                               TextButton(
                                 onPressed: _navigateToRegister,
                                 child: const Text(
-                                  'Register',
+                                  'Sign Up',
                                   style: TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                               ),
@@ -297,11 +348,11 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'screens/login_page.dart';
+import 'screens/loading_page.dart';
 
 void main() async {
   // Ensure Flutter is initialized
@@ -30,10 +30,10 @@ class AamalyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: Colors.grey[50],
+        fontFamily: 'Poppins',
+        scaffoldBackgroundColor: const Color(0xFF0B0F14),
       ),
-      home: const LoginPage(),
+      home: const LoadingScreen(),
     );
   }
 }
