@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user.dart' as app_user;
 import '../services/firebase_auth_service.dart';
 import 'package:intl/intl.dart';
+import 'login_page.dart'; // ✅ ADD THIS
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({Key? key}) : super(key: key);
@@ -97,6 +98,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
               });
               _loadStats();
             },
+            tooltip: 'Refresh',
+          ),
+          // ✅ ADD LOGOUT BUTTON
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _showLogoutDialog,
+            tooltip: 'Log Out',
           ),
         ],
         bottom: TabBar(
@@ -869,5 +877,49 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
         ],
       ),
     );
+  }
+
+  // ============================================
+  // LOGOUT DIALOG
+  // ============================================
+  void _showLogoutDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log Out'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await _authService.logout();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+          (route) => false,
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Logout failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
