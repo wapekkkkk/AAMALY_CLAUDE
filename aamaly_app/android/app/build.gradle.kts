@@ -2,29 +2,12 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-}
-
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader("UTF-8") { reader ->
-        localProperties.load(reader)
-    }
-}
-
-def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
-if (flutterVersionCode == null) {
-    flutterVersionCode = "1"
-}
-
-def flutterVersionName = localProperties.getProperty("flutter.versionName")
-if (flutterVersionName == null) {
-    flutterVersionName = "1.0"
+    id("com.google.gms.google-services")
 }
 
 android {
     namespace = "com.aamaly.app"
-    compileSdk = 34
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -44,14 +27,14 @@ android {
         applicationId = "com.aamaly.app"
         minSdk = flutter.minSdkVersion
         targetSdk = 34
-        versionCode = flutterVersionCode.toInteger()
-        versionName = flutterVersionName
+        versionCode = 1
+        versionName = "1.0"
         multiDexEnabled = true
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
@@ -63,5 +46,3 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
-
-apply plugin: "com.google.gms.google-services"
