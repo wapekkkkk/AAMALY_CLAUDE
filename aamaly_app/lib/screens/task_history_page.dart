@@ -1,6 +1,6 @@
 // ============================================
 // FILE: lib/screens/task_history_page.dart
-// TASK HISTORY PAGE - Completed Tasks List
+// UPDATED THEME: Dark + Neon (matches Profile/TaskDetail)
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -18,6 +18,15 @@ class TaskHistoryPage extends StatefulWidget {
 }
 
 class _TaskHistoryPageState extends State<TaskHistoryPage> {
+  // ===== Theme (Dark) =====
+  static const Color _bg = Color(0xFF0E141B);
+  static const Color _card = Color(0xFF121A23);
+  static const Color _border = Color(0x1AFFFFFF);
+  static const Color _text = Color(0xFFF8FAFC);
+  static const Color _muted = Color(0xFF9AA4B2);
+  static const Color _accent = Color(0xFF7C4DFF);
+  static const Color _accent2 = Color(0xFF00E5FF);
+
   final _authService = FirebaseAuthService();
   final _taskService = TaskService();
 
@@ -40,7 +49,6 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
         final completed =
             allTasks.where((t) => t.status == TaskStatus.completed).toList();
 
-        // Sort by deadline (most recent first)
         completed.sort((a, b) => b.deadline.compareTo(a.deadline));
 
         setState(() {
@@ -49,10 +57,7 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
         });
       }
     } catch (e) {
-      print('Error loading task history: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -82,44 +87,46 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
     final displayTasks = _filteredTasks;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2196F3),
-        foregroundColor: Colors.white,
+        backgroundColor: _bg,
+        foregroundColor: _text,
         title: const Text('Task History'),
         elevation: 0,
+        centerTitle: true,
       ),
       body: Column(
         children: [
-          // ✅ FILTER TABS
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildFilterTab('All Time', 'all'),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildFilterTab('This Week', 'week'),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildFilterTab('This Month', 'month'),
-                ),
-              ],
+          // Filter Bar (Card)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _card,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: _buildFilterTab('All Time', 'all')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildFilterTab('This Week', 'week')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildFilterTab('This Month', 'month')),
+                ],
+              ),
             ),
           ),
 
-          // ✅ TASK LIST
+          // Tasks
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : displayTasks.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                         itemCount: displayTasks.length,
                         itemBuilder: (context, index) {
                           return _buildTaskCard(displayTasks[index]);
@@ -131,39 +138,43 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
     );
   }
 
-  // ✅ Build Filter Tab
   Widget _buildFilterTab(String label, String filter) {
     final isSelected = _selectedFilter == filter;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = filter;
-        });
-      },
-      child: Container(
+      onTap: () => setState(() => _selectedFilter = filter),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2196F3) : Colors.white,
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [_accent, _accent2],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isSelected ? null : const Color(0xFF0F1720),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF2196F3) : Colors.grey[300]!,
+            color: isSelected
+                ? Colors.transparent
+                : Colors.white.withOpacity(0.12),
           ),
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : const Color(0xFF1A1A2E),
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: isSelected ? Colors.white : _muted,
           ),
         ),
       ),
     );
   }
 
-  // ✅ Build Task Card
   Widget _buildTaskCard(Task task) {
     final now = DateTime.now();
     final daysAgo = now.difference(task.deadline).inDays;
@@ -174,60 +185,64 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
             : '$daysAgo days ago';
 
     Color priorityColor;
+    String prLabel;
     switch (task.priority) {
       case TaskPriority.high:
         priorityColor = Colors.red;
+        prLabel = 'High';
         break;
       case TaskPriority.medium:
         priorityColor = Colors.orange;
+        prLabel = 'Med';
         break;
       case TaskPriority.low:
         priorityColor = Colors.green;
+        prLabel = 'Low';
         break;
     }
+
+    final projectLabel =
+        task.projectName.trim().isEmpty ? 'No project' : task.projectName;
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => TaskDetailPage(task: task),
-          ),
+          MaterialPageRoute(builder: (context) => TaskDetailPage(task: task)),
         );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: _card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Row(
           children: [
-            // ✅ Checkmark Icon
+            // Completed icon
             Container(
-              padding: const EdgeInsets.all(10),
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: Colors.green[50],
-                shape: BoxShape.circle,
+                color: Colors.green.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.green.withOpacity(0.22)),
               ),
-              child: const Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 24,
-              ),
+              child: const Icon(Icons.check_circle, color: Colors.green),
             ),
 
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
 
-            // ✅ Task Info
+            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,28 +250,25 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
                   Text(
                     task.title,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: _text,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(
-                        Icons.folder,
-                        size: 14,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
+                      Icon(Icons.folder, size: 14, color: _muted),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          task.projectName,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
+                          projectLabel,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: _muted,
+                            fontWeight: FontWeight.w600,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -264,20 +276,17 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(
-                        Icons.calendar_today,
-                        size: 14,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
+                      Icon(Icons.calendar_today, size: 14, color: _muted),
+                      const SizedBox(width: 6),
                       Text(
                         DateFormat('MMM d, yyyy').format(task.deadline),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: _muted,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -285,7 +294,7 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
                         '• $timeAgo',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[500],
+                          color: _muted.withOpacity(0.85),
                         ),
                       ),
                     ],
@@ -294,24 +303,21 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
               ),
             ),
 
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
 
-            // ✅ Priority Badge
+            // Priority
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: priorityColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: priorityColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: priorityColor.withOpacity(0.25)),
               ),
               child: Text(
-                task.priority == TaskPriority.high
-                    ? 'High'
-                    : task.priority == TaskPriority.medium
-                        ? 'Med'
-                        : 'Low',
+                prLabel,
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
                   color: priorityColor,
                 ),
               ),
@@ -322,7 +328,6 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
     );
   }
 
-  // ✅ Build Empty State
   Widget _buildEmptyState() {
     String message;
     String subtitle;
@@ -330,44 +335,52 @@ class _TaskHistoryPageState extends State<TaskHistoryPage> {
     switch (_selectedFilter) {
       case 'week':
         message = 'No tasks completed this week';
-        subtitle = 'Complete some tasks to see them here!';
+        subtitle = 'Complete some tasks to see them here.';
         break;
       case 'month':
         message = 'No tasks completed this month';
-        subtitle = 'Complete some tasks to see them here!';
+        subtitle = 'Complete some tasks to see them here.';
         break;
       default:
         message = 'No completed tasks yet';
-        subtitle = 'Complete tasks to build your history!';
+        subtitle = 'Complete tasks to build your history.';
     }
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.history,
-            size: 80,
-            color: Colors.grey[300],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
+      child: Container(
+        margin: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _border),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.history, size: 72, color: _muted.withOpacity(0.6)),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: _text,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: _muted,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -57,5 +57,15 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/logoaamaly.png
-    - assets/images/bg_aamaly.jpg
+    - assets/images/
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700

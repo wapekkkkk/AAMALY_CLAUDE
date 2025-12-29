@@ -1,5 +1,5 @@
 // ============================================
-// FILE: lib/screens/dashboard_page.dart (UPDATED - Scrollable Projects & Tasks)
+// FILE: lib/screens/dashboard_page.dart (DARK THEME UI UPDATE ONLY)
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -35,30 +35,45 @@ class _DashboardPageState extends State<DashboardPage> {
   final _projectService = ProjectService();
   final _taskService = TaskService();
 
+  // 🎨 App palette (kept inside file, UI only)
+  static const Color kBg = Color(0xFF0E141B);
+  static const Color kSurface = Color(0xFF151D27);
+  static const Color kSurface2 = Color(0xFF1B2430);
+  static const Color kBorder = Color(0xFF263241);
+
+  static const Color kText = Color(0xFFF2F4F8);
+  static const Color kMuted = Color(0xFF9AA7B4);
+
+  static const Color kPrimary = Color(0xFF7C4DFF);
+  static const Color kDanger = Color(0xFFFF5C7A);
+  static const Color kWarning = Color(0xFFFFC857);
+  static const Color kSuccess = Color(0xFF2EE59D);
+  static const Color kInfo = Color(0xFF4DA3FF);
+
   void _onNavItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
 
     switch (index) {
-      case 0: // Home - already here
+      case 0:
         break;
-      case 1: // Calendar
+      case 1:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const CalendarPage()),
         );
         break;
-      case 2: // Add New
+      case 2:
         _showAddNewDialog();
         break;
-      case 3: // Collaborators
+      case 3:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const FriendsPage()),
         );
         break;
-      case 4: // Search
+      case 4:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const SearchPage()),
@@ -71,13 +86,15 @@ class _DashboardPageState extends State<DashboardPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add New'),
+        backgroundColor: kSurface,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('Add New', style: TextStyle(color: kText)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.task_alt, color: Color(0xFF2196F3)),
-              title: const Text('New Task'),
+              leading: const Icon(Icons.task_alt, color: kPrimary),
+              title: const Text('New Task', style: TextStyle(color: kText)),
               onTap: () async {
                 Navigator.pop(context);
                 await Navigator.push(
@@ -88,8 +105,8 @@ class _DashboardPageState extends State<DashboardPage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.folder, color: Color(0xFF2196F3)),
-              title: const Text('New Project'),
+              leading: const Icon(Icons.folder, color: kPrimary),
+              title: const Text('New Project', style: TextStyle(color: kText)),
               onTap: () async {
                 Navigator.pop(context);
                 await Navigator.push(
@@ -112,11 +129,11 @@ class _DashboardPageState extends State<DashboardPage> {
     final userId = currentUser?.id ?? '';
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: kBg,
       body: SafeArea(
         child: Column(
           children: [
-            // ✅ FIXED HEADER - Not scrollable
+            // ✅ FIXED HEADER
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Row(
@@ -130,23 +147,23 @@ class _DashboardPageState extends State<DashboardPage> {
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A2E),
+                          color: kText,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      const Text(
                         'Have a nice day.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: kMuted,
                         ),
                       ),
                     ],
                   ),
+
                   // Notification Bell + Profile
                   Row(
                     children: [
-                      // Notification Bell with Badge
                       StreamBuilder<int>(
                         stream: NotificationService().getUnreadCount(userId),
                         builder: (context, snapshot) {
@@ -159,7 +176,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   Icons.notifications_outlined,
                                   size: 28,
                                 ),
-                                color: const Color(0xFF1A1A2E),
+                                color: kPrimary,
                                 onPressed: () {
                                   Navigator.push(
                                     context,
@@ -177,7 +194,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
                                     decoration: const BoxDecoration(
-                                      color: Colors.red,
+                                      color: kDanger,
                                       shape: BoxShape.circle,
                                     ),
                                     constraints: const BoxConstraints(
@@ -200,18 +217,16 @@ class _DashboardPageState extends State<DashboardPage> {
                         },
                       ),
                       const SizedBox(width: 8),
-                      // Profile Icon
                       CircleAvatar(
                         radius: 24,
-                        backgroundColor: const Color(0xFF2196F3),
+                        backgroundColor: kPrimary,
                         child: IconButton(
                           icon: const Icon(Icons.person, color: Colors.white),
                           onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const ProfilePage(),
-                              ),
+                                  builder: (context) => const ProfilePage()),
                             );
                           },
                         ),
@@ -222,7 +237,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
 
-            // ✅ FIXED FILTER TABS - Not scrollable
+            // ✅ FILTER TABS
             StreamBuilder<List<Task>>(
               stream: _taskService.getMyTasks(userId),
               builder: (context, snapshot) {
@@ -251,14 +266,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
             const SizedBox(height: 20),
 
-            // ✅ SCROLLABLE CONTENT - Projects and Tasks together
+            // ✅ SCROLLABLE CONTENT
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ✅ PROJECT SECTION - Scrollable vertically, horizontal list
+                    // ✅ PROJECT SECTION
                     StreamBuilder<List<Project>>(
                       stream: _projectService.getAllUserProjects(userId),
                       builder: (context, snapshot) {
@@ -276,6 +291,11 @@ class _DashboardPageState extends State<DashboardPage> {
                           return Container(
                             height: 200,
                             margin: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: kSurface,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: kBorder),
+                            ),
                             child: Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -283,9 +303,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                   Icon(Icons.folder_open,
                                       size: 48, color: Colors.grey[400]),
                                   const SizedBox(height: 12),
-                                  Text('No projects yet',
-                                      style:
-                                          TextStyle(color: Colors.grey[600])),
+                                  const Text('No projects yet',
+                                      style: TextStyle(color: kMuted)),
                                   const SizedBox(height: 8),
                                   ElevatedButton.icon(
                                     onPressed: () async {
@@ -300,7 +319,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                     icon: const Icon(Icons.add),
                                     label: const Text('Create Project'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF2196F3),
+                                      backgroundColor: kPrimary,
+                                      foregroundColor: Colors.white,
                                     ),
                                   ),
                                 ],
@@ -337,7 +357,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A1A2E),
+                              color: kText,
                             ),
                           ),
                           TextButton(
@@ -348,13 +368,16 @@ class _DashboardPageState extends State<DashboardPage> {
                                     builder: (context) => const SearchPage()),
                               );
                             },
-                            child: const Text('View All'),
+                            child: const Text(
+                              'View All',
+                              style: TextStyle(color: kPrimary),
+                            ),
                           ),
                         ],
                       ),
                     ),
 
-                    // ✅ TASK LIST - Scrollable vertically with projects
+                    // ✅ TASK LIST
                     StreamBuilder<List<Project>>(
                       stream: _projectService.getAllUserProjects(userId),
                       builder: (context, projectSnapshot) {
@@ -376,14 +399,16 @@ class _DashboardPageState extends State<DashboardPage> {
                               return Padding(
                                 padding: const EdgeInsets.all(20.0),
                                 child: Center(
-                                  child: Text('Error: ${taskSnapshot.error}'),
+                                  child: Text(
+                                    'Error: ${taskSnapshot.error}',
+                                    style: const TextStyle(color: kText),
+                                  ),
                                 ),
                               );
                             }
 
                             var tasks = taskSnapshot.data ?? [];
 
-                            // Apply filter
                             if (_selectedFilter == 'in_progress') {
                               tasks = tasks
                                   .where(
@@ -398,7 +423,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
                             if (tasks.isEmpty) {
                               return Container(
-                                padding: const EdgeInsets.all(40.0),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                padding: const EdgeInsets.all(24.0),
+                                decoration: BoxDecoration(
+                                  color: kSurface,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(color: kBorder),
+                                ),
                                 child: Center(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -406,11 +438,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                       Icon(Icons.inbox,
                                           size: 64, color: Colors.grey[400]),
                                       const SizedBox(height: 16),
-                                      Text(
+                                      const Text(
                                         'No tasks found',
                                         style: TextStyle(
-                                            fontSize: 16,
-                                            color: Colors.grey[600]),
+                                            fontSize: 16, color: kMuted),
                                       ),
                                       const SizedBox(height: 8),
                                       ElevatedButton.icon(
@@ -418,16 +449,15 @@ class _DashboardPageState extends State<DashboardPage> {
                                           await Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const CreateTaskPage(),
-                                            ),
+                                                builder: (context) =>
+                                                    const CreateTaskPage()),
                                           );
                                         },
                                         icon: const Icon(Icons.add),
                                         label: const Text('Create Task'),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0xFF2196F3),
+                                          backgroundColor: kPrimary,
+                                          foregroundColor: Colors.white,
                                         ),
                                       ),
                                     ],
@@ -436,16 +466,13 @@ class _DashboardPageState extends State<DashboardPage> {
                               );
                             }
 
-                            // Show only first 5 tasks
                             final displayTasks = tasks.take(5).toList();
 
                             return ListView.builder(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 20),
-                              shrinkWrap:
-                                  true, // ✅ IMPORTANT: Allows ListView inside ScrollView
-                              physics:
-                                  const NeverScrollableScrollPhysics(), // ✅ Disable ListView scroll
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
                               itemCount: displayTasks.length,
                               itemBuilder: (context, index) {
                                 return _buildTaskCard(
@@ -457,7 +484,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       },
                     ),
 
-                    // ✅ Bottom padding for better scrolling experience
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -472,6 +498,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildFilterTab(String label, int count, String filter) {
     final isSelected = _selectedFilter == filter;
+
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -482,15 +509,9 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2196F3) : Colors.white,
+            color: isSelected ? kPrimary : kSurface,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(color: kBorder),
           ),
           child: Column(
             children: [
@@ -498,7 +519,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : const Color(0xFFFF6B6B),
+                  color: isSelected ? Colors.white : kSurface2,
                   shape: BoxShape.circle,
                 ),
                 child: Text(
@@ -506,7 +527,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? const Color(0xFF2196F3) : Colors.white,
+                    color: isSelected ? kPrimary : kText,
                   ),
                 ),
               ),
@@ -516,7 +537,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : const Color(0xFF1A1A2E),
+                  color: isSelected ? Colors.white : kText,
                 ),
               ),
             ],
@@ -554,9 +575,9 @@ class _DashboardPageState extends State<DashboardPage> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: gradientColors[0].withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: gradientColors[0].withOpacity(0.25),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -571,7 +592,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.school,
@@ -584,7 +605,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
-                            color: Colors.blue,
+                            color: kInfo,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.group,
@@ -594,7 +615,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ],
                 ),
                 const Spacer(),
-                Icon(Icons.more_vert, color: Colors.white.withOpacity(0.8)),
+                Icon(Icons.more_vert, color: Colors.white.withOpacity(0.85)),
               ],
             ),
             const SizedBox(height: 8),
@@ -609,24 +630,26 @@ class _DashboardPageState extends State<DashboardPage> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
-            ...project.taskTypes.take(2).map((type) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.circle, size: 6, color: Colors.white),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          type,
-                          style: const TextStyle(
-                              fontSize: 13, color: Colors.white),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+            ...project.taskTypes.take(2).map(
+                  (type) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.circle, size: 6, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            type,
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.white),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                )),
+                ),
             const Spacer(),
             if (project.hasCollaborators)
               Padding(
@@ -635,7 +658,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   '${project.collaboratorIds.length} ${project.collaboratorIds.length == 1 ? 'member' : 'members'}',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withOpacity(0.92),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -646,9 +669,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 value: project.totalTasks > 0
                     ? project.completedTasks / project.totalTasks
                     : 0.0,
-                backgroundColor: Colors.white.withOpacity(0.3),
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
+                backgroundColor: Colors.white.withOpacity(0.25),
+                valueColor: const AlwaysStoppedAnimation<Color>(kPrimary),
                 minHeight: 6,
               ),
             ),
@@ -657,7 +679,7 @@ class _DashboardPageState extends State<DashboardPage> {
               '${project.totalTasks > 0 ? ((project.completedTasks / project.totalTasks) * 100).toStringAsFixed(0) : '0'}% Complete',
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withOpacity(0.92),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -665,7 +687,7 @@ class _DashboardPageState extends State<DashboardPage> {
               'Created ${DateFormat('MMM d, yyyy').format(project.dateCreated)}',
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withOpacity(0.82),
               ),
             ),
           ],
@@ -687,22 +709,22 @@ class _DashboardPageState extends State<DashboardPage> {
       project = null;
     }
 
-    final projectColor = project?.color ?? const Color(0xFF2196F3);
+    final projectColor = project?.color ?? kPrimary;
 
     Color statusColor;
     String statusLabel;
 
     switch (task.status) {
       case TaskStatus.completed:
-        statusColor = Colors.green;
+        statusColor = kSuccess;
         statusLabel = 'Completed';
         break;
       case TaskStatus.inProgress:
-        statusColor = Colors.blue;
+        statusColor = kInfo;
         statusLabel = 'In Progress';
         break;
       default:
-        statusColor = Colors.orange;
+        statusColor = kWarning;
         statusLabel = 'To Do';
     }
 
@@ -710,24 +732,16 @@ class _DashboardPageState extends State<DashboardPage> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => TaskDetailPage(task: task),
-          ),
+          MaterialPageRoute(builder: (context) => TaskDetailPage(task: task)),
         );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: kSurface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: kBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -737,7 +751,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: projectColor.withOpacity(0.1),
+                    color: projectColor.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -760,9 +774,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           fontWeight: FontWeight.bold,
                           decoration:
                               isCompleted ? TextDecoration.lineThrough : null,
-                          color: isCompleted
-                              ? Colors.grey
-                              : const Color(0xFF1A1A2E),
+                          color: isCompleted ? kMuted : kText,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -770,7 +782,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         'Due ${DateFormat('MMM d, yyyy').format(task.deadline)}',
                         style: TextStyle(
                           fontSize: 13,
-                          color: daysUntil < 0 ? Colors.red : Colors.grey[600],
+                          color: daysUntil < 0 ? kDanger : kMuted,
                           fontWeight: daysUntil < 0
                               ? FontWeight.bold
                               : FontWeight.normal,
@@ -779,7 +791,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     ],
                   ),
                 ),
-                Icon(Icons.more_vert, color: Colors.grey[400]),
+                Icon(Icons.more_vert, color: Colors.white.withOpacity(0.65)),
               ],
             ),
             const SizedBox(height: 12),
@@ -789,8 +801,9 @@ class _DashboardPageState extends State<DashboardPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withOpacity(0.16),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: statusColor.withOpacity(0.35)),
                   ),
                   child: Text(
                     statusLabel,
@@ -806,8 +819,9 @@ class _DashboardPageState extends State<DashboardPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: projectColor.withOpacity(0.1),
+                    color: projectColor.withOpacity(0.16),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: projectColor.withOpacity(0.35)),
                   ),
                   child: Text(
                     task.projectName,
@@ -826,9 +840,8 @@ class _DashboardPageState extends State<DashboardPage> {
               child: OutlinedButton(
                 onPressed: () => _toggleTaskCompletion(task),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: isCompleted ? Colors.orange : Colors.green,
-                  side: BorderSide(
-                      color: isCompleted ? Colors.orange : Colors.green),
+                  foregroundColor: isCompleted ? kWarning : kSuccess,
+                  side: BorderSide(color: isCompleted ? kWarning : kSuccess),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -863,7 +876,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ? 'Task marked as in progress!'
                 : 'Task marked as done!',
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: kSuccess,
           duration: const Duration(seconds: 2),
         ),
       );
@@ -871,52 +884,58 @@ class _DashboardPageState extends State<DashboardPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: kDanger,
         ),
       );
     }
   }
 
   Widget _buildBottomNavBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(18),
+        topRight: Radius.circular(18),
       ),
-      child: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavItemTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF2196F3),
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.home, size: 28), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today, size: 24), label: 'Projects'),
-          BottomNavigationBarItem(
-            icon: CircleAvatar(
-              radius: 28,
-              backgroundColor: Color(0xFF2196F3),
-              child: Icon(Icons.add, color: Colors.white, size: 32),
-            ),
-            label: 'Add',
+      child: Container(
+        decoration: const BoxDecoration(
+          color: kSurface2,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
           ),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.people, size: 28), label: 'Team'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.search, size: 28), label: 'Search'),
-        ],
+          border: Border(
+            top: BorderSide(color: kBorder, width: 1),
+          ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onNavItemTapped,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: kSurface2,
+          selectedItemColor: kPrimary,
+          unselectedItemColor: kMuted,
+          showSelectedLabels: false,
+          showUnselectedLabels: false,
+          elevation: 0,
+          items: const [
+            BottomNavigationBarItem(
+                icon: Icon(Icons.home, size: 28), label: 'Home'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.calendar_today, size: 24), label: 'Projects'),
+            BottomNavigationBarItem(
+              icon: CircleAvatar(
+                radius: 28,
+                backgroundColor: kPrimary,
+                child: Icon(Icons.add, color: Colors.white, size: 32),
+              ),
+              label: 'Add',
+            ),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.people, size: 28), label: 'Team'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.search, size: 28), label: 'Search'),
+          ],
+        ),
       ),
     );
   }

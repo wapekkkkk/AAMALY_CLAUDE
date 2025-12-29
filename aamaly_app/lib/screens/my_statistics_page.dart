@@ -1,10 +1,9 @@
 // ============================================
 // FILE: lib/screens/my_statistics_page.dart
-// MY STATISTICS PAGE - Task Breakdown & Progress
+// UPDATED THEME: Dark + Neon (cards + text consistent)
 // ============================================
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/task_service.dart';
@@ -17,13 +16,21 @@ class MyStatisticsPage extends StatefulWidget {
 }
 
 class _MyStatisticsPageState extends State<MyStatisticsPage> {
+  // ===== Theme (Dark) =====
+  static const Color _bg = Color(0xFF0E141B);
+  static const Color _card = Color(0xFF121A23);
+  static const Color _border = Color(0x1AFFFFFF);
+  static const Color _text = Color(0xFFF8FAFC);
+  static const Color _muted = Color(0xFF9AA4B2);
+  static const Color _accent = Color(0xFF7C4DFF);
+  static const Color _accent2 = Color(0xFF00E5FF);
+
   final _authService = FirebaseAuthService();
   final _taskService = TaskService();
 
   List<Task> _allTasks = [];
   bool _isLoading = true;
 
-  // Stats
   int _totalTasks = 0;
   int _completedTasks = 0;
   int _inProgressTasks = 0;
@@ -54,10 +61,8 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
 
           _completedTasks =
               tasks.where((t) => t.status == TaskStatus.completed).length;
-
           _inProgressTasks =
               tasks.where((t) => t.status == TaskStatus.inProgress).length;
-
           _todoTasks = tasks.where((t) => t.status == TaskStatus.todo).length;
 
           _overdueTasks = tasks
@@ -67,7 +72,6 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
 
           _thisWeekTasks =
               tasks.where((t) => t.deadline.isAfter(weekStart)).length;
-
           _thisMonthTasks =
               tasks.where((t) => t.deadline.isAfter(monthStart)).length;
 
@@ -75,26 +79,23 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
         });
       }
     } catch (e) {
-      print('Error loading statistics: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final completionRate = _totalTasks > 0
-        ? (_completedTasks / _totalTasks * 100).toStringAsFixed(1)
-        : '0.0';
+    final completionRate =
+        _totalTasks > 0 ? (_completedTasks / _totalTasks) : 0.0;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2196F3),
-        foregroundColor: Colors.white,
+        backgroundColor: _bg,
+        foregroundColor: _text,
         title: const Text('My Statistics'),
         elevation: 0,
+        centerTitle: true,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -103,22 +104,22 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ✅ COMPLETION RATE CARD
+                  // Completion Card (gradient)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                        colors: [_accent, _accent2],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF2196F3).withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                          color: _accent.withOpacity(0.25),
+                          blurRadius: 18,
+                          offset: const Offset(0, 10),
                         ),
                       ],
                     ),
@@ -128,17 +129,17 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
                           'Completion Rate',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Text(
-                          '$completionRate%',
+                          '${(completionRate * 100).toStringAsFixed(1)}%',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 46,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -146,7 +147,20 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
                           '$_completedTasks of $_totalTasks tasks completed',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.9),
-                            fontSize: 14,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: LinearProgressIndicator(
+                            value: completionRate,
+                            minHeight: 10,
+                            backgroundColor: Colors.white.withOpacity(0.22),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -155,13 +169,12 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
 
                   const SizedBox(height: 24),
 
-                  // ✅ TASK STATUS BREAKDOWN
                   const Text(
                     'Task Status',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _text,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -171,7 +184,7 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
                       Expanded(
                         child: _buildStatusCard(
                           'Completed',
-                          _completedTasks.toString(),
+                          _completedTasks,
                           Colors.green,
                           Icons.check_circle,
                         ),
@@ -180,22 +193,20 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
                       Expanded(
                         child: _buildStatusCard(
                           'In Progress',
-                          _inProgressTasks.toString(),
+                          _inProgressTasks,
                           Colors.blue,
                           Icons.pending,
                         ),
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 12),
-
                   Row(
                     children: [
                       Expanded(
                         child: _buildStatusCard(
                           'To Do',
-                          _todoTasks.toString(),
+                          _todoTasks,
                           Colors.orange,
                           Icons.radio_button_unchecked,
                         ),
@@ -204,7 +215,7 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
                       Expanded(
                         child: _buildStatusCard(
                           'Overdue',
-                          _overdueTasks.toString(),
+                          _overdueTasks,
                           Colors.red,
                           Icons.warning_amber_rounded,
                         ),
@@ -214,51 +225,48 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
 
                   const SizedBox(height: 24),
 
-                  // ✅ TIME PERIOD BREAKDOWN
                   const Text(
                     'Activity',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _text,
                     ),
                   ),
                   const SizedBox(height: 12),
 
                   _buildActivityCard(
                     'This Week',
-                    _thisWeekTasks.toString(),
+                    _thisWeekTasks,
                     'Tasks with deadlines this week',
                     Icons.calendar_today,
+                    _accent,
                   ),
-
                   const SizedBox(height: 12),
-
                   _buildActivityCard(
                     'This Month',
-                    _thisMonthTasks.toString(),
+                    _thisMonthTasks,
                     'Tasks with deadlines this month',
                     Icons.calendar_month,
+                    _accent2,
                   ),
-
                   const SizedBox(height: 12),
-
                   _buildActivityCard(
                     'Total Tasks',
-                    _totalTasks.toString(),
+                    _totalTasks,
                     'All time task count',
                     Icons.assignment,
+                    _accent,
                   ),
 
                   const SizedBox(height: 24),
 
-                  // ✅ PRIORITY BREAKDOWN
                   const Text(
                     'Priority Distribution',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _text,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -272,40 +280,49 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
     );
   }
 
-  // ✅ Build Status Card
-  Widget _buildStatusCard(
-      String label, String value, Color color, IconData icon) {
+  Widget _buildStatusCard(String label, int value, Color color, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: _card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withOpacity(0.22)),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 10),
           Text(
-            value,
+            value.toString(),
             style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: color,
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              color: _text,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: _muted,
+              fontWeight: FontWeight.w700,
             ),
             textAlign: TextAlign.center,
           ),
@@ -314,37 +331,40 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
     );
   }
 
-  // ✅ Build Activity Card
   Widget _buildActivityCard(
-      String title, String value, String subtitle, IconData icon) {
+    String title,
+    int value,
+    String subtitle,
+    IconData icon,
+    Color glowColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: _card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
-              color: const Color(0xFF2196F3).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: glowColor.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: glowColor.withOpacity(0.22)),
             ),
-            child: Icon(
-              icon,
-              color: const Color(0xFF2196F3),
-              size: 24,
-            ),
+            child: Icon(icon, color: glowColor, size: 22),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,28 +372,29 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: _text,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: _muted,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
           Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2196F3),
+            value.toString(),
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: glowColor,
             ),
           ),
         ],
@@ -381,7 +402,6 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
     );
   }
 
-  // ✅ Build Priority Breakdown
   Widget _buildPriorityBreakdown() {
     final highPriority =
         _allTasks.where((t) => t.priority == TaskPriority.high).length;
@@ -391,34 +411,33 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
         _allTasks.where((t) => t.priority == TaskPriority.low).length;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: _card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
           _buildPriorityRow('High Priority', highPriority, Colors.red),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _buildPriorityRow('Medium Priority', mediumPriority, Colors.orange),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _buildPriorityRow('Low Priority', lowPriority, Colors.green),
         ],
       ),
     );
   }
 
-  // ✅ Build Priority Row
   Widget _buildPriorityRow(String label, int count, Color color) {
-    final percentage =
-        _totalTasks > 0 ? (count / _totalTasks * 100).toStringAsFixed(0) : '0';
+    final percentage = _totalTasks > 0 ? (count / _totalTasks) : 0.0;
 
     return Row(
       children: [
@@ -429,35 +448,39 @@ class _MyStatisticsPageState extends State<MyStatisticsPage> {
               Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: _text,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                '$count tasks ($percentage%)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
+                '$count tasks (${(percentage * 100).toStringAsFixed(0)}%)',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: _muted,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(width: 12),
         Container(
-          width: 60,
-          height: 8,
+          width: 78,
+          height: 10,
           decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(4),
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withOpacity(0.10)),
           ),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
-            widthFactor: _totalTasks > 0 ? count / _totalTasks : 0,
+            widthFactor: percentage,
             child: Container(
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(999),
               ),
             ),
           ),

@@ -1,16 +1,16 @@
 // ============================================
-// FILE: lib/screens/create_task_page.dart (WITH FIREBASE COLLABORATORS)
+// FILE: lib/screens/create_task_page.dart (DARK THEME + FIREBASE COLLABORATORS)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../models/project.dart';
-import '../models/user.dart' as app_user; // ✅ CHANGED
+import '../models/user.dart' as app_user;
 import '../services/project_service.dart';
 import '../services/task_service.dart';
 import '../services/firebase_auth_service.dart';
-import '../services/friend_service.dart'; // ✅ NEW
+import '../services/friend_service.dart';
 
 class CreateTaskPage extends StatefulWidget {
   final String? lockedProjectName;
@@ -36,7 +36,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final _taskService = TaskService();
   final _authService = FirebaseAuthService();
   final _projectService = ProjectService();
-  final _friendService = FriendService(); // ✅ NEW
+  final _friendService = FriendService();
 
   DateTime? _selectedDeadline;
   TaskPriority _selectedPriority = TaskPriority.medium;
@@ -46,9 +46,22 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   bool _isLoading = false;
   List<Project> _availableProjects = [];
-  List<app_user.User> _projectCollaborators = []; // ✅ NEW
+  List<app_user.User> _projectCollaborators = [];
 
-  Color _themeColor = const Color(0xFF2196F3);
+  // 🎨 Dark theme (match Friends/Search)
+  static const Color kBg = Color(0xFF0E141B);
+  static const Color kAppBarBg = Color(0xFF0B0F14);
+  static const Color kSurface = Color(0xFF151D27);
+  static const Color kSurface2 = Color(0xFF1B2430);
+  static const Color kBorder = Color(0xFF263241);
+
+  static const Color kText = Color(0xFFF2F4F8);
+  static const Color kMuted = Color(0xFF9AA7B4);
+
+  static const Color kPrimary = Color(0xFF7C4DFF);
+
+  // keep this so you can swap later if project color exists
+  Color _themeColor = kPrimary;
 
   @override
   void initState() {
@@ -59,7 +72,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _selectedProjectName =
           widget.lockedProjectCode ?? widget.lockedProjectName;
 
-      // ✅ Load collaborators if project is locked
       if (widget.project != null) {
         _loadProjectCollaborators(widget.project!.id);
       }
@@ -72,34 +84,26 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       if (currentUserId != null) {
         final projects =
             await _projectService.getAllUserProjects(currentUserId).first;
-
         if (mounted) {
-          setState(() {
-            _availableProjects = projects;
-          });
+          setState(() => _availableProjects = projects);
         }
       }
     } catch (e) {
-      print('Error loading projects: $e');
+      // ignore (you can add logging)
     }
   }
 
-  // ✅ NEW METHOD - Load collaborators for selected project
   Future<void> _loadProjectCollaborators(String projectId) async {
     try {
       final collaborators =
           await _projectService.getProjectCollaborators(projectId);
-
       if (mounted) {
-        setState(() {
-          _projectCollaborators = collaborators;
-        });
+        setState(() => _projectCollaborators = collaborators);
       }
     } catch (e) {
-      print('Error loading collaborators: $e');
-      setState(() {
-        _projectCollaborators = [];
-      });
+      if (mounted) {
+        setState(() => _projectCollaborators = []);
+      }
     }
   }
 
@@ -119,10 +123,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF2196F3),
+          data: ThemeData.dark().copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: kPrimary,
+              surface: kSurface,
+              onSurface: kText,
             ),
+            dialogBackgroundColor: kSurface,
           ),
           child: child!,
         );
@@ -130,16 +137,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     );
 
     if (picked != null) {
-      setState(() {
-        _selectedDeadline = picked;
-      });
+      setState(() => _selectedDeadline = picked);
     }
   }
 
   Future<void> _handleCreateTask() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     if (_selectedDeadline == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -151,15 +154,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final currentUserId = _authService.currentUserId;
-      if (currentUserId == null) {
-        throw Exception('User not authenticated');
-      }
+      if (currentUserId == null) throw Exception('User not authenticated');
 
       // Get the actual project ID
       String? actualProjectId;
@@ -173,7 +172,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 p.name == _selectedProjectName,
           );
           actualProjectId = selectedProject.id;
-        } catch (e) {
+        } catch (_) {
           actualProjectId = null;
         }
       }
@@ -201,9 +200,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         assignedToUserId: _assignedToUserId,
       );
 
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
 
       if (mounted) {
         Navigator.of(context).pop(createdTask);
@@ -220,9 +217,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         );
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -262,528 +257,443 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     return false;
   }
 
+  InputDecoration _fieldDecoration({
+    required String hint,
+    IconData? icon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: kMuted),
+      prefixIcon: icon == null ? null : Icon(icon, color: kMuted),
+      filled: true,
+      fillColor: kSurface2,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: kBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: _themeColor, width: 1.2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget _sectionCard({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: kSurface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: kBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: kText,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLocked = widget.lockedProjectName != null;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              _themeColor,
-              _themeColor.withOpacity(0.7),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.center,
+      backgroundColor: kBg,
+      appBar: AppBar(
+        backgroundColor: kAppBarBg,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: kText),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Create New Task',
+          style: TextStyle(
+            color: kText,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Create New Task',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Task details
+                _sectionCard(
+                  title: 'Task Details',
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _titleController,
+                        style: const TextStyle(
+                          color: kText,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                         ),
+                        decoration: _fieldDecoration(
+                          hint: 'E.g., Complete FYP Chapter 3',
+                          icon: Icons.title,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter task title';
+                          }
+                          if (value.trim().length < 3) {
+                            return 'Title must be at least 3 characters';
+                          }
+                          return null;
+                        },
                       ),
-                    ),
-                    const SizedBox(width: 48),
-                  ],
-                ),
-              ),
-
-              // Form Section
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 5),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30),
-                    ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _descriptionController,
+                        style: const TextStyle(color: kText, fontSize: 14),
+                        maxLines: 4,
+                        decoration: _fieldDecoration(
+                          hint: 'Describe the task in detail...',
+                          icon: Icons.notes_outlined,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter task description';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                   ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Title and Description
-                          Transform.translate(
-                            offset: const Offset(0, -15),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 24),
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _themeColor,
-                                    _themeColor.withOpacity(0.8),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Project & Assignment
+                _sectionCard(
+                  title: 'Project & Assignment',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Project
+                      const Text(
+                        'Project',
+                        style: TextStyle(color: kMuted, fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+
+                      if (isLocked)
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: kSurface2,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: kBorder),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.lock, color: kMuted, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  widget.lockedProjectName!,
+                                  style: const TextStyle(
+                                    color: kText,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        DropdownButtonFormField<String>(
+                          value: _selectedProjectName,
+                          dropdownColor: kSurface,
+                          iconEnabledColor: kMuted,
+                          style: const TextStyle(color: kText),
+                          decoration: _fieldDecoration(
+                            hint: 'Select a project (Optional)',
+                            icon: Icons.folder_outlined,
+                          ),
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('No Project',
+                                  style: TextStyle(color: kText)),
+                            ),
+                            ..._availableProjects.map((project) {
+                              return DropdownMenuItem(
+                                value: project.code,
+                                child: Text(
+                                  '${project.name} (${project.code})',
+                                  style: const TextStyle(color: kText),
+                                ),
+                              );
+                            }),
+                          ],
+                          onChanged: (value) async {
+                            setState(() {
+                              _selectedProjectName = value;
+                              _assignedToUserId = null;
+                            });
+
+                            if (value != null) {
+                              try {
+                                final selectedProject =
+                                    _availableProjects.firstWhere(
+                                  (p) => p.code == value || p.name == value,
+                                );
+                                await _loadProjectCollaborators(
+                                    selectedProject.id);
+                              } catch (_) {}
+                            } else {
+                              setState(() => _projectCollaborators = []);
+                            }
+                          },
+                        ),
+
+                      const SizedBox(height: 16),
+
+                      // Assign To (only if collaborators exist)
+                      if (_shouldShowAssignField()) ...[
+                        const Text(
+                          'Assign To',
+                          style: TextStyle(color: kMuted, fontSize: 12),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: _assignedToUserId,
+                          dropdownColor: kSurface,
+                          iconEnabledColor: kMuted,
+                          style: const TextStyle(color: kText),
+                          decoration: _fieldDecoration(
+                            hint: 'Select team member (Optional)',
+                            icon: Icons.person_outline,
+                          ),
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Unassigned',
+                                  style: TextStyle(color: kText)),
+                            ),
+                            ..._projectCollaborators.map((user) {
+                              return DropdownMenuItem(
+                                value: user.id,
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: _themeColor,
+                                      child: Text(
+                                        user.initials,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        user.name,
+                                        style: const TextStyle(color: kText),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                borderRadius: BorderRadius.circular(20),
+                              );
+                            }),
+                          ],
+                          onChanged: (value) {
+                            setState(() => _assignedToUserId = value);
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Deadline
+                _sectionCard(
+                  title: 'Deadline',
+                  child: InkWell(
+                    onTap: _selectDeadline,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: kSurface2,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: kBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_today,
+                              color: _themeColor, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _selectedDeadline == null
+                                  ? 'Select deadline date'
+                                  : DateFormat('EEEE, MMM dd, yyyy')
+                                      .format(_selectedDeadline!),
+                              style: TextStyle(
+                                color:
+                                    _selectedDeadline == null ? kMuted : kText,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Title',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _titleController,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    decoration: const InputDecoration(
-                                      hintText: 'E.g., Complete FYP Chapter 3',
-                                      hintStyle: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 20,
-                                      ),
-                                      border: InputBorder.none,
-                                    ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'Please enter task title';
-                                      }
-                                      if (value.trim().length < 3) {
-                                        return 'Title must be at least 3 characters';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 20),
-                                  const Text(
-                                    'Description',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _descriptionController,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                                    maxLines: 3,
-                                    decoration: const InputDecoration(
-                                      hintText:
-                                          'Describe the task in detail...',
-                                      hintStyle: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 16,
-                                      ),
-                                      border: InputBorder.none,
-                                    ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'Please enter task description';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                ],
-                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-
-                          // Project, Assign, Deadline
-                          Transform.translate(
-                            offset: const Offset(0, -30),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Project',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-
-                                if (isLocked)
-                                  Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(12),
-                                      border:
-                                          Border.all(color: Colors.grey[300]!),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.lock,
-                                            color: Colors.grey, size: 20),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            widget.lockedProjectName!,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.black87,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                else
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[50],
-                                      borderRadius: BorderRadius.circular(12),
-                                      border:
-                                          Border.all(color: Colors.grey[300]!),
-                                    ),
-                                    child: DropdownButtonFormField<String>(
-                                      value: _selectedProjectName,
-                                      decoration: const InputDecoration(
-                                        prefixIcon: Icon(Icons.folder_outlined),
-                                        border: InputBorder.none,
-                                        contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 12,
-                                        ),
-                                      ),
-                                      hint: const Text(
-                                          'Select a project (Optional)'),
-                                      items: [
-                                        const DropdownMenuItem(
-                                          value: null,
-                                          child: Text('No Project'),
-                                        ),
-                                        ..._availableProjects.map((project) {
-                                          return DropdownMenuItem(
-                                            value: project.code,
-                                            child: Text(
-                                                '${project.name} (${project.code})'),
-                                          );
-                                        }),
-                                      ],
-                                      onChanged: (value) async {
-                                        setState(() {
-                                          _selectedProjectName = value;
-                                          _assignedToUserId =
-                                              null; // Reset assignment
-                                        });
-
-                                        // ✅ Load collaborators when project changes
-                                        if (value != null) {
-                                          try {
-                                            final selectedProject =
-                                                _availableProjects.firstWhere(
-                                              (p) =>
-                                                  p.code == value ||
-                                                  p.name == value,
-                                            );
-                                            await _loadProjectCollaborators(
-                                                selectedProject.id);
-                                          } catch (e) {
-                                            print('Error: $e');
-                                          }
-                                        } else {
-                                          setState(() {
-                                            _projectCollaborators = [];
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  ),
-
-                                const SizedBox(height: 16),
-
-                                // ✅ UPDATED: Assign To with Firebase collaborators
-                                if (_shouldShowAssignField())
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Assign To',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[50],
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: Colors.grey[300]!),
-                                        ),
-                                        child: DropdownButtonFormField<String>(
-                                          value: _assignedToUserId,
-                                          decoration: const InputDecoration(
-                                            prefixIcon:
-                                                Icon(Icons.person_outline),
-                                            border: InputBorder.none,
-                                            contentPadding:
-                                                EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 12,
-                                            ),
-                                          ),
-                                          hint: const Text(
-                                              'Select team member (Optional)'),
-                                          items: [
-                                            const DropdownMenuItem(
-                                              value: null,
-                                              child: Text('Unassigned'),
-                                            ),
-                                            // ✅ Use Firebase collaborators
-                                            ..._projectCollaborators
-                                                .map((user) {
-                                              return DropdownMenuItem(
-                                                value: user.id,
-                                                child: Row(
-                                                  children: [
-                                                    CircleAvatar(
-                                                      radius: 12,
-                                                      backgroundColor:
-                                                          const Color(
-                                                              0xFF2196F3),
-                                                      child: Text(
-                                                        user.initials,
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(user.name),
-                                                  ],
-                                                ),
-                                              );
-                                            }),
-                                          ],
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _assignedToUserId = value;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                    ],
-                                  ),
-
-                                // Deadline
-                                const Text(
-                                  'Deadline',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                InkWell(
-                                  onTap: _selectDeadline,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      border:
-                                          Border.all(color: Colors.grey[300]!),
-                                      borderRadius: BorderRadius.circular(12),
-                                      color: Colors.grey[50],
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.calendar_today,
-                                            color: _themeColor, size: 20),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            _selectedDeadline == null
-                                                ? 'Select deadline date'
-                                                : DateFormat(
-                                                        'EEEE, MMM dd, yyyy')
-                                                    .format(_selectedDeadline!),
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              color: _selectedDeadline == null
-                                                  ? Colors.grey[600]
-                                                  : const Color(0xFF1A1A2E),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                        const Icon(Icons.arrow_forward_ios,
-                                            size: 14, color: Colors.grey),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Priority and Status
-                          Transform.translate(
-                            offset: const Offset(0, -10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Priority',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: TaskPriority.values.map((priority) {
-                                    final isSelected =
-                                        _selectedPriority == priority;
-                                    return Expanded(
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 8.0),
-                                        child: ChoiceChip(
-                                          label: Text(
-                                            _getPriorityText(priority),
-                                            style: TextStyle(
-                                              color: isSelected
-                                                  ? Colors.white
-                                                  : Colors.black,
-                                            ),
-                                          ),
-                                          selected: isSelected,
-                                          selectedColor:
-                                              _getPriorityColor(priority),
-                                          backgroundColor:
-                                              _getPriorityColor(priority)
-                                                  .withOpacity(0.1),
-                                          onSelected: (selected) {
-                                            setState(() {
-                                              _selectedPriority = priority;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                                const SizedBox(height: 20),
-                                const Text(
-                                  'Status',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  children: TaskStatus.values.map((status) {
-                                    final isSelected =
-                                        _selectedStatus == status;
-                                    return ChoiceChip(
-                                      label: Text(
-                                        _getStatusText(status),
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                      selected: isSelected,
-                                      selectedColor: _getStatusColor(status),
-                                      backgroundColor: _getStatusColor(status)
-                                          .withOpacity(0.1),
-                                      onSelected: (selected) {
-                                        setState(() {
-                                          _selectedStatus = status;
-                                        });
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Create Button
-                          Transform.translate(
-                            offset: const Offset(0, 10),
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleCreateTask,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _themeColor,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 2,
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                Colors.white),
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Create Task',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
-                          ),
+                          const Icon(Icons.chevron_right, color: kMuted),
                         ],
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 14),
+
+                // Priority & Status
+                _sectionCard(
+                  title: 'Priority & Status',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Priority',
+                          style: TextStyle(color: kMuted, fontSize: 12)),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: TaskPriority.values.map((priority) {
+                          final isSelected = _selectedPriority == priority;
+                          final c = _getPriorityColor(priority);
+
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: Text(
+                                  _getPriorityText(priority),
+                                  style: TextStyle(
+                                    color: isSelected ? Colors.white : kMuted,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                  ),
+                                ),
+                                selected: isSelected,
+                                selectedColor: c,
+                                backgroundColor: kSurface2,
+                                side:
+                                    BorderSide(color: isSelected ? c : kBorder),
+                                onSelected: (_) => setState(
+                                    () => _selectedPriority = priority),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 18),
+                      const Text('Status',
+                          style: TextStyle(color: kMuted, fontSize: 12)),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: TaskStatus.values.map((status) {
+                          final isSelected = _selectedStatus == status;
+                          final c = _getStatusColor(status);
+
+                          return ChoiceChip(
+                            label: Text(
+                              _getStatusText(status),
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : kMuted,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: c,
+                            backgroundColor: kSurface2,
+                            side: BorderSide(color: isSelected ? c : kBorder),
+                            onSelected: (_) =>
+                                setState(() => _selectedStatus = status),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Create Button
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleCreateTask,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _themeColor,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: _themeColor.withOpacity(0.4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Create Task',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

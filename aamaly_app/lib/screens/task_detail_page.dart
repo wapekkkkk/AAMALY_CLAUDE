@@ -1,22 +1,22 @@
 // ============================================
-// FILE: lib/screens/task_detail_page.dart (UPDATED WITH REAL FILESERVICE)
+// FILE: lib/screens/task_detail_page.dart
+// UPDATED: Clean theme like other pages + Project color (fallback purple)
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+
 import '../models/task.dart';
 import '../utils/task_helper.dart';
 import '../widgets/edit_task_bottom_sheet.dart';
 import '../models/file_attachment.dart';
-import '../data/mock_users.dart';
-import '../models/project.dart';
-import '../data/mock_projects.dart';
 import '../services/task_service.dart';
-import '../services/file_service.dart'; // ✅ NEW
-import '../services/firebase_auth_service.dart'; // ✅ NEW
-import '../utils/logger.dart'; // ✅ NEW
-import '../utils/error_handler.dart'; // ✅ NEW
-import 'package:file_picker/file_picker.dart'; // ✅ NEW
+import '../services/file_service.dart';
+import '../services/firebase_auth_service.dart';
+import '../utils/logger.dart';
+import '../utils/error_handler.dart';
 
 class TaskDetailPage extends StatefulWidget {
   final Task task;
@@ -29,45 +29,139 @@ class TaskDetailPage extends StatefulWidget {
 
 class _TaskDetailPageState extends State<TaskDetailPage> {
   late Task _currentTask;
-  Project? _project;
 
-  final _fileService = FileService(); // ✅ NEW
-  final _authService = FirebaseAuthService(); // ✅ NEW
+  final _fileService = FileService();
+  final _authService = FirebaseAuthService();
+  final _firestore = FirebaseFirestore.instance;
+
+  static const Color _defaultTaskColor = Color(0xFF7B68EE);
+
+  // Loaded from Firestore (best effort)
+  String? _projectId;
+  String? _projectName;
+  String? _projectCode;
+  String? _projectOwnerId;
+  Color _projectColor = _defaultTaskColor;
+
+  // cache for user names (for assignee/uploader)
+  final Map<String, String> _userNameCache = {};
+
+  bool _loadingProject = true;
+
+  Color get _themeColor => _projectColor;
+  String get _currentUserId => _authService.currentUserId ?? '';
 
   @override
   void initState() {
     super.initState();
     _currentTask = widget.task;
-    _loadProject();
+    _loadProjectTheme(); // ✅ Firestore project color
   }
 
-  void _loadProject() {
+  // ✅ Load project by task.projectName (tries match by name first, then code)
+  Future<void> _loadProjectTheme() async {
+    setState(() => _loadingProject = true);
+
+    final key = _currentTask.projectName.trim();
+    if (key.isEmpty || key.toLowerCase() == 'no project') {
+      setState(() {
+        _projectId = null;
+        _projectName = null;
+        _projectCode = null;
+        _projectOwnerId = null;
+        _projectColor = _defaultTaskColor;
+        _loadingProject = false;
+      });
+      return;
+    }
+
     try {
-      _project = MockProjects.getProjects().firstWhere(
-        (p) =>
-            p.name == _currentTask.projectName ||
-            p.code == _currentTask.projectName,
-      );
-    } catch (e) {
-      _project = null;
+      QuerySnapshot<Map<String, dynamic>> snap = await _firestore
+          .collection('projects')
+          .where('name', isEqualTo: key)
+          .limit(1)
+          .get();
+
+      if (snap.docs.isEmpty) {
+        snap = await _firestore
+            .collection('projects')
+            .where('code', isEqualTo: key)
+            .limit(1)
+            .get();
+      }
+
+      if (snap.docs.isNotEmpty) {
+        final doc = snap.docs.first;
+        final data = doc.data();
+
+        final dynamic colorRaw = data['color'];
+        final Color resolvedColor = _parseColor(colorRaw) ?? _defaultTaskColor;
+
+        setState(() {
+          _projectId = doc.id;
+          _projectName = (data['name'] ?? key).toString();
+          _projectCode = (data['code'] ?? '').toString();
+          _projectOwnerId = (data['ownerId'] ?? '').toString();
+          _projectColor = resolvedColor;
+          _loadingProject = false;
+        });
+      } else {
+        setState(() {
+          _projectId = null;
+          _projectName = null;
+          _projectCode = null;
+          _projectOwnerId = null;
+          _projectColor = _defaultTaskColor;
+          _loadingProject = false;
+        });
+      }
+    } catch (_) {
+      setState(() {
+        _projectId = null;
+        _projectName = null;
+        _projectCode = null;
+        _projectOwnerId = null;
+        _projectColor = _defaultTaskColor;
+        _loadingProject = false;
+      });
     }
   }
 
+  Color? _parseColor(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is int) return Color(raw);
+
+    if (raw is String) {
+      // Accept "0xFF2196F3" or "4281558867"
+      final s = raw.trim();
+      if (s.startsWith('0x') || s.startsWith('0X')) {
+        final v = int.tryParse(s.substring(2), radix: 16);
+        if (v != null) return Color(v);
+      }
+      final v = int.tryParse(s);
+      if (v != null) return Color(v);
+    }
+    return null;
+  }
+
   bool get _canEdit {
-    if (_project == null) return true;
-    return _project!.isOwner(MockUsers.currentUser.id) ||
-        _currentTask.assignedToUserId == MockUsers.currentUser.id;
+    // If no project detected, keep your previous behavior (allow)
+    if (_projectId == null) return true;
+
+    // Owner or assigned user can edit
+    return _projectOwnerId == _currentUserId ||
+        _currentTask.assignedToUserId == _currentUserId;
   }
 
   bool get _canDelete {
-    if (_project == null) return true;
-    return _project!.isOwner(MockUsers.currentUser.id);
+    if (_projectId == null) return true;
+    return _projectOwnerId == _currentUserId;
   }
 
   bool get _canUploadFiles {
-    if (_project == null) return true;
-    return _project!.isOwner(MockUsers.currentUser.id) ||
-        _currentTask.assignedToUserId == MockUsers.currentUser.id;
+    if (_projectId == null) return true;
+    return _projectOwnerId == _currentUserId ||
+        _currentTask.assignedToUserId == _currentUserId;
   }
 
   void _showEditBottomSheet() async {
@@ -89,9 +183,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
 
     if (updatedTask != null) {
-      setState(() {
-        _currentTask = updatedTask;
-      });
+      setState(() => _currentTask = updatedTask);
+      await _loadProjectTheme();
     }
   }
 
@@ -120,14 +213,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(
-            child: CircularProgressIndicator(),
-          ),
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
         );
 
         await TaskService().deleteTask(_currentTask.id);
 
-        if (mounted) Navigator.pop(context);
+        if (mounted) Navigator.pop(context); // close loader
         if (mounted) Navigator.pop(context, 'delete');
 
         if (mounted) {
@@ -140,7 +232,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         }
       } catch (e) {
         if (mounted) Navigator.pop(context);
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -155,23 +246,24 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('EEEE, MMMM dd, yyyy');
     final isOverdue = _currentTask.isOverdue;
+    final deadlineText =
+        DateFormat('EEEE, MMMM dd, yyyy').format(_currentTask.deadline);
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0B0F1A), // your dark theme bg
+      // ✅ consistent light page like others
       appBar: AppBar(
-        title: const Text('Task Details'),
-        backgroundColor: const Color(0xFF2196F3),
+        backgroundColor: _themeColor,
         foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Task Details'),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
-              if (value == 'edit') {
-                _showEditBottomSheet();
-              } else if (value == 'delete') {
-                _showDeleteConfirmation();
-              }
+              if (value == 'edit') _showEditBottomSheet();
+              if (value == 'delete') _showDeleteConfirmation();
             },
             itemBuilder: (context) => [
               if (_canEdit)
@@ -200,370 +292,350 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header Section with Status
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: TaskHelper.getStatusColor(_currentTask.status)
-                    .withOpacity(0.1),
-                border: Border(
-                  bottom: BorderSide(
-                    color: TaskHelper.getStatusColor(_currentTask.status)
-                        .withOpacity(0.3),
-                    width: 2,
-                  ),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: TaskHelper.getStatusColor(_currentTask.status),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _currentTask.status == TaskStatus.completed
-                              ? Icons.check_circle
-                              : _currentTask.status == TaskStatus.inProgress
-                                  ? Icons.pending
-                                  : Icons.circle_outlined,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          TaskHelper.getStatusText(_currentTask.status),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _currentTask.title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+      body: Column(
+        children: [
+          // ✅ HERO HEADER (like your other pages)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
+            decoration: BoxDecoration(
+              color: _themeColor,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
               ),
             ),
-
-            // Details Section
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildInfoRow(
-                    icon: Icons.flag,
-                    label: 'Priority',
-                    value: TaskHelper.getPriorityText(_currentTask.priority),
-                    valueColor:
-                        TaskHelper.getPriorityColor(_currentTask.priority),
-                    showBadge: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Status pill
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.22),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white.withOpacity(0.25)),
                   ),
-
-                  const Divider(height: 32),
-
-                  _buildInfoRow(
-                    icon: Icons.folder_outlined,
-                    label: 'Project',
-                    value: _currentTask.projectName,
-                  ),
-
-                  const Divider(height: 32),
-
-                  _buildInfoRow(
-                    icon: Icons.calendar_today,
-                    label: 'Deadline',
-                    value: dateFormat.format(_currentTask.deadline),
-                    valueColor: isOverdue ? Colors.red : null,
-                  ),
-
-                  if (isOverdue)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 40, top: 8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.warning,
-                                size: 16, color: Colors.red),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Overdue by ${_currentTask.daysUntilDeadline.abs()} day(s)',
-                              style: const TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _currentTask.status == TaskStatus.completed
+                            ? Icons.check_circle
+                            : _currentTask.status == TaskStatus.inProgress
+                                ? Icons.pending
+                                : Icons.circle_outlined,
+                        size: 16,
+                        color: Colors.white,
                       ),
-                    ),
-
-                  if (!isOverdue && _currentTask.status != TaskStatus.completed)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 40, top: 8),
-                      child: Text(
-                        '${_currentTask.daysUntilDeadline} day(s) remaining',
-                        style: TextStyle(
-                          color: Colors.grey[600],
+                      const SizedBox(width: 6),
+                      Text(
+                        TaskHelper.getStatusText(_currentTask.status),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
-                      ),
-                    ),
-
-                  const Divider(height: 32),
-
-                  const Text(
-                    'Description',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Text(
-                      _currentTask.description,
-                      style: TextStyle(
-                        fontSize: 15,
-                        height: 1.5,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // ✅ REAL-TIME ATTACHMENTS SECTION
-                  _buildAttachmentsSection(),
-
-                  const SizedBox(height: 24),
-
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline,
-                            size: 16, color: Colors.blue[700]),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Task ID: ${_currentTask.id}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blue[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    Color? valueColor,
-    bool showBadge = false,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 24, color: const Color(0xFF2196F3)),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              showBadge
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: valueColor?.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: valueColor ?? Colors.grey),
-                      ),
-                      child: Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: valueColor,
-                        ),
-                      ),
-                    )
-                  : Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: valueColor ?? Colors.black87,
-                      ),
-                    ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ✅ NEW - Real-time Attachments Section with StreamBuilder
-  Widget _buildAttachmentsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.attach_file, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  'Attachments',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            if (_canUploadFiles)
-              TextButton.icon(
-                onPressed: _showUploadDialog,
-                icon: const Icon(Icons.upload_file, size: 18),
-                label: const Text('Upload'),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // ✅ StreamBuilder for real-time file updates
-        StreamBuilder<List<FileAttachment>>(
-          stream: _fileService.getTaskFiles(_currentTask.id),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(20.0),
-                  child: CircularProgressIndicator(),
-                ),
-              );
-            }
-
-            if (snapshot.hasError) {
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red[300]!),
-                ),
-                child: Center(
-                  child: Text(
-                    'Error loading files: ${snapshot.error}',
-                    style: TextStyle(color: Colors.red[700]),
-                  ),
-                ),
-              );
-            }
-
-            final files = snapshot.data ?? [];
-
-            if (files.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(Icons.folder_open,
-                          size: 48, color: Colors.grey[400]),
-                      const SizedBox(height: 8),
-                      Text(
-                        'No files attached',
-                        style: TextStyle(color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
-              );
-            }
 
-            return Column(
-              children: files.map((file) => _buildFileCard(file)).toList(),
-            );
-          },
-        ),
-      ],
+                const SizedBox(height: 14),
+
+                Text(
+                  _currentTask.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // Project line
+                Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _loadingProject
+                            ? 'Loading project...'
+                            : (_projectId == null
+                                ? 'No project (Default theme)'
+                                : '${_projectName ?? ''}${(_projectCode ?? '').isNotEmpty ? ' • ${_projectCode!}' : ''}'),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // ✅ WHITE SHEET BODY (this is what your screenshot is missing)
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(top: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF101827), // dark surface
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(26)),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    // ✅ Info card
+                    _SectionCard(
+                      title: 'Overview',
+                      icon: Icons.info_outline,
+                      iconColor: _themeColor,
+                      child: Column(
+                        children: [
+                          _InfoTile(
+                            icon: Icons.flag,
+                            iconColor: _themeColor,
+                            label: 'Priority',
+                            trailing:
+                                _PriorityChip(priority: _currentTask.priority),
+                          ),
+                          const SizedBox(height: 12),
+                          _InfoTile(
+                            icon: Icons.folder_outlined,
+                            iconColor: _themeColor,
+                            label: 'Project',
+                            value: _currentTask.projectName.isEmpty
+                                ? 'No project'
+                                : _currentTask.projectName,
+                          ),
+                          const SizedBox(height: 12),
+                          _InfoTile(
+                            icon: Icons.calendar_today,
+                            iconColor: _themeColor,
+                            label: 'Deadline',
+                            value: deadlineText,
+                            valueColor: isOverdue ? Colors.red : null,
+                          ),
+                          if (isOverdue)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.red.withOpacity(0.25)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.warning_amber_rounded,
+                                        color: Colors.red, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Overdue by ${_currentTask.daysUntilDeadline.abs()} day(s)',
+                                        style: const TextStyle(
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                          // Optional: Assignee
+                          if (_currentTask.assignedToUserId != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: FutureBuilder<String>(
+                                future: _getUserName(
+                                    _currentTask.assignedToUserId!),
+                                builder: (context, snap) {
+                                  final name = snap.data ?? 'Loading...';
+                                  final isMe = _currentTask.assignedToUserId ==
+                                      _currentUserId;
+                                  return _InfoTile(
+                                    icon: Icons.person_outline,
+                                    iconColor: _themeColor,
+                                    label: 'Assigned To',
+                                    value: isMe ? 'You' : name,
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // ✅ Description card
+                    _SectionCard(
+                      title: 'Description',
+                      icon: Icons.description_outlined,
+                      iconColor: _themeColor,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Text(
+                          _currentTask.description.isEmpty
+                              ? '-'
+                              : _currentTask.description,
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            height: 1.5,
+                            color: Colors.grey[850],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // ✅ Attachments card
+                    _SectionCard(
+                      title: 'Attachments',
+                      icon: Icons.attach_file,
+                      iconColor: _themeColor,
+                      trailing: _canUploadFiles
+                          ? TextButton.icon(
+                              onPressed: _showUploadDialog,
+                              icon: Icon(Icons.upload_file,
+                                  size: 18, color: _themeColor),
+                              label: Text('Upload',
+                                  style: TextStyle(
+                                      color: _themeColor,
+                                      fontWeight: FontWeight.w700)),
+                            )
+                          : null,
+                      child: _buildAttachmentsList(),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Small footer
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _themeColor.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(14),
+                        border:
+                            Border.all(color: _themeColor.withOpacity(0.18)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                              size: 16, color: _themeColor),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Task ID: ${_currentTask.id}',
+                              style: TextStyle(
+                                  color: _themeColor,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  // ✅ NEW - Real File Upload Dialog
+  // ✅ Attachments List (clean)
+  Widget _buildAttachmentsList() {
+    return StreamBuilder<List<FileAttachment>>(
+      stream: _fileService.getTaskFiles(_currentTask.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(18.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.red.withOpacity(0.25)),
+            ),
+            child: Text(
+              'Error loading files: ${snapshot.error}',
+              style: const TextStyle(
+                  color: Colors.red, fontWeight: FontWeight.w600),
+            ),
+          );
+        }
+
+        final files = snapshot.data ?? [];
+        if (files.isEmpty) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.folder_open, size: 42, color: Colors.grey[400]),
+                const SizedBox(height: 8),
+                Text('No files attached',
+                    style: TextStyle(
+                        color: Colors.grey[700], fontWeight: FontWeight.w600)),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          children: files.map((f) => _buildFileCard(f)).toList(),
+        );
+      },
+    );
+  }
+
+  // ✅ Upload dialog
   void _showUploadDialog() {
     showDialog(
       context: context,
@@ -611,37 +683,36 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
   }
 
-  // ✅ NEW - Real File Upload with Progress
+  // ✅ Upload with progress (dialog updates correctly)
   Future<void> _uploadFile(FileType type, [List<String>? extensions]) async {
-    try {
-      Logger.info('Starting file upload', 'TaskDetailPage');
+    StateSetter? dialogSetState;
+    double uploadProgress = 0.0;
 
-      // Pick file
+    try {
       final pickedFile = await _fileService.pickFile(
         type: type,
         allowedExtensions: extensions,
       );
 
-      if (pickedFile == null) {
-        Logger.info('File picker cancelled', 'TaskDetailPage');
-        return;
-      }
+      if (pickedFile == null) return;
 
-      // Show progress dialog
-      double uploadProgress = 0.0;
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => StatefulBuilder(
           builder: (context, setState) {
+            dialogSetState = setState;
             return AlertDialog(
               title: const Text('Uploading File'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(pickedFile.name),
-                  const SizedBox(height: 16),
-                  LinearProgressIndicator(value: uploadProgress),
+                  const SizedBox(height: 14),
+                  LinearProgressIndicator(
+                    value: uploadProgress,
+                    color: _themeColor,
+                  ),
                   const SizedBox(height: 8),
                   Text('${(uploadProgress * 100).toStringAsFixed(0)}%'),
                 ],
@@ -651,28 +722,22 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         ),
       );
 
-      // Upload file
-      final currentUserId = _authService.currentUserId;
-      if (currentUserId == null) {
-        throw Exception('User not authenticated');
-      }
+      final uid = _authService.currentUserId;
+      if (uid == null) throw Exception('User not authenticated');
 
       await _fileService.uploadFile(
         taskId: _currentTask.id,
         file: pickedFile,
-        uploadedBy: currentUserId,
-        onProgress: (progress) {
-          if (mounted) {
-            // Update progress
-            uploadProgress = progress;
-          }
+        uploadedBy: uid,
+        onProgress: (p) {
+          dialogSetState?.call(() {
+            uploadProgress = p;
+          });
         },
       );
 
-      // Close progress dialog
       if (mounted) Navigator.pop(context);
 
-      // Show success
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -681,15 +746,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           ),
         );
       }
-
-      Logger.success('File uploaded successfully', 'TaskDetailPage');
     } catch (e) {
       Logger.error('Failed to upload file', e);
-
-      // Close progress dialog if open
       if (mounted) Navigator.pop(context);
 
-      // Show error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -701,7 +761,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
   }
 
-  // ✅ NEW - Real File Delete
   void _deleteFile(FileAttachment file) {
     showDialog(
       context: context,
@@ -716,24 +775,18 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-
               try {
-                // Show loading
                 showDialog(
                   context: context,
                   barrierDismissible: false,
-                  builder: (context) => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  builder: (context) =>
+                      const Center(child: CircularProgressIndicator()),
                 );
 
-                // Delete file
                 await _fileService.deleteFile(file.id);
 
-                // Close loading
                 if (mounted) Navigator.pop(context);
 
-                // Show success
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -742,15 +795,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     ),
                   );
                 }
-
-                Logger.success('File deleted', 'TaskDetailPage');
               } catch (e) {
-                Logger.error('Failed to delete file', e);
-
-                // Close loading
                 if (mounted) Navigator.pop(context);
-
-                // Show error
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -772,73 +818,66 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   void _viewFile(FileAttachment file) async {
     try {
       final url = await _fileService.getDownloadUrl(file.id);
+      Logger.info('File URL: $url', 'TaskDetailPage');
 
-      // Show dialog with download URL
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(file.fileName),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('File Type: ${file.fileType}'),
-                Text('Size: ${file.formattedSize}'),
-                const SizedBox(height: 16),
-                const Text('Opening file in browser...'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(file.fileName),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('File Type: ${file.fileType}'),
+              Text('Size: ${file.formattedSize}'),
+              const SizedBox(height: 10),
+              const Text('Opening file in browser...'),
             ],
           ),
-        );
-      }
-
-      Logger.info('File URL: $url', 'TaskDetailPage');
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
-      Logger.error('Failed to get file URL', e);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(ErrorHandler.getErrorMessage(e)),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ErrorHandler.getErrorMessage(e)),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   Widget _buildFileCard(FileAttachment file) {
-    final uploader = MockUsers.getUserById(file.uploadedBy);
     final canDelete = _canUploadFiles &&
-        (file.uploadedBy == _authService.currentUserId ||
-            (_project?.isOwner(MockUsers.currentUser.id) ?? false));
+        (file.uploadedBy == _currentUserId ||
+            _projectOwnerId == _currentUserId);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _getFileColor(file.fileType).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: _getFileColor(file.fileType).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               _getFileIcon(file.fileType),
               color: _getFileColor(file.fileType),
-              size: 28,
+              size: 22,
             ),
           ),
           const SizedBox(width: 12),
@@ -848,42 +887,37 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               children: [
                 Text(
                   file.fileName,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '${uploader?.name ?? 'Unknown'} • ${file.formattedSize} • ${_formatDate(file.uploadedAt)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                FutureBuilder<String>(
+                  future: _getUserName(file.uploadedBy),
+                  builder: (context, snap) {
+                    final name = (file.uploadedBy == _currentUserId)
+                        ? 'You'
+                        : (snap.data ?? 'User');
+                    return Text(
+                      '$name • ${file.formattedSize} • ${_formatDate(file.uploadedAt)}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    );
+                  },
                 ),
               ],
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.visibility, size: 20),
-                onPressed: () => _viewFile(file),
-                tooltip: 'View',
-                color: Colors.blue,
-              ),
-              if (canDelete)
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 20),
-                  onPressed: () => _deleteFile(file),
-                  tooltip: 'Delete',
-                  color: Colors.red,
-                ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.visibility, size: 20),
+            onPressed: () => _viewFile(file),
+            color: _themeColor,
           ),
+          if (canDelete)
+            IconButton(
+              icon: const Icon(Icons.delete, size: 20),
+              onPressed: () => _deleteFile(file),
+              color: Colors.red,
+            ),
         ],
       ),
     );
@@ -925,19 +959,197 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
-    final difference = now.difference(date);
+    final diff = now.difference(date);
 
-    if (difference.inDays == 0) {
-      if (difference.inHours == 0) {
-        return '${difference.inMinutes}m ago';
-      }
-      return '${difference.inHours}h ago';
-    } else if (difference.inDays == 1) {
+    if (diff.inDays == 0) {
+      if (diff.inHours == 0) return '${diff.inMinutes}m ago';
+      return '${diff.inHours}h ago';
+    } else if (diff.inDays == 1) {
       return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    } else {
-      return DateFormat('MMM dd').format(date);
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays}d ago';
     }
+    return DateFormat('MMM dd').format(date);
+  }
+
+  Future<String> _getUserName(String userId) async {
+    if (_userNameCache.containsKey(userId)) return _userNameCache[userId]!;
+
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      final data = doc.data();
+      final name = (data?['name'] ?? data?['fullName'] ?? 'User').toString();
+      _userNameCache[userId] = name;
+      return name;
+    } catch (_) {
+      return 'User';
+    }
+  }
+}
+
+// ==========================
+// UI SMALL WIDGETS
+// ==========================
+
+class _SectionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color iconColor;
+  final Widget child;
+  final Widget? trailing;
+
+  const _SectionCard({
+    required this.title,
+    required this.icon,
+    required this.iconColor,
+    required this.child,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A), // dark card
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: iconColor),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(
+                      0xFFF8FAFC), // bright (fixes "Overview"/"Description")
+                  letterSpacing: 0.2,
+                ),
+              )),
+              if (trailing != null) trailing!,
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String? value;
+  final Widget? trailing;
+  final Color? valueColor;
+
+  const _InfoTile({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    this.value,
+    this.trailing,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.08)),
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.65),
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              if (value != null)
+                Text(
+                  value!,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: valueColor ?? Colors.white,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (trailing != null) trailing!,
+      ],
+    );
+  }
+}
+
+class _PriorityChip extends StatelessWidget {
+  final TaskPriority priority;
+
+  const _PriorityChip({required this.priority});
+
+  @override
+  Widget build(BuildContext context) {
+    Color c;
+    String text;
+
+    switch (priority) {
+      case TaskPriority.high:
+        c = Colors.red;
+        text = 'High';
+        break;
+      case TaskPriority.medium:
+        c = Colors.orange;
+        text = 'Medium';
+        break;
+      case TaskPriority.low:
+        c = Colors.green;
+        text = 'Low';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: c.withOpacity(0.35)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: c,
+          fontWeight: FontWeight.w800,
+          fontSize: 13,
+        ),
+      ),
+    );
   }
 }

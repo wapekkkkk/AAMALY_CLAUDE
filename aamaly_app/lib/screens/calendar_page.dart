@@ -1,5 +1,5 @@
 // ============================================
-// FILE: lib/screens/calendar_page.dart (FULL MONTH CALENDAR WITH WEEK ARROWS)
+// FILE: lib/screens/calendar_page.dart (DARK THEME UI UPDATE ONLY)
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -24,25 +24,37 @@ class CalendarPage extends StatefulWidget {
 class _CalendarPageState extends State<CalendarPage> {
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedMonth = DateTime.now();
-  DateTime _currentWeekStart = DateTime.now(); // ✅ NEW - Track current week
+  DateTime _currentWeekStart = DateTime.now();
 
   final _taskService = TaskService();
   final _reminderService = ReminderService();
   final _authService = FirebaseAuthService();
 
+  // 🎨 Theme colors (same family as Dashboard)
+  static const Color kBg = Color(0xFF0E141B);
+  static const Color kSurface = Color(0xFF151D27);
+  static const Color kSurface2 = Color(0xFF1B2430);
+  static const Color kBorder = Color(0xFF263241);
+
+  static const Color kText = Color(0xFFF2F4F8);
+  static const Color kMuted = Color(0xFF9AA7B4);
+
+  static const Color kPrimary = Color(0xFF7C4DFF);
+
+  // Keep reminders pink (as requested)
+  static const Color kPink = Color(0xFFFF69B4);
+
   @override
   void initState() {
     super.initState();
-    _currentWeekStart = _getWeekStart(_focusedMonth); // ✅ Initialize week
+    _currentWeekStart = _getWeekStart(_focusedMonth);
     Logger.navigation('Dashboard', 'CalendarPage');
   }
 
-  // ✅ NEW - Get start of week (Sunday)
   DateTime _getWeekStart(DateTime date) {
     return date.subtract(Duration(days: date.weekday % 7));
   }
 
-  // ✅ NEW - Navigate to previous week
   void _previousWeek() {
     setState(() {
       _currentWeekStart = _currentWeekStart.subtract(const Duration(days: 7));
@@ -50,7 +62,6 @@ class _CalendarPageState extends State<CalendarPage> {
     });
   }
 
-  // ✅ NEW - Navigate to next week
   void _nextWeek() {
     setState(() {
       _currentWeekStart = _currentWeekStart.add(const Duration(days: 7));
@@ -58,7 +69,6 @@ class _CalendarPageState extends State<CalendarPage> {
     });
   }
 
-  // Get tasks for a specific date
   List<Task> _getTasksForDate(List<Task> allTasks, DateTime date) {
     return allTasks.where((task) {
       return task.deadline.year == date.year &&
@@ -71,7 +81,6 @@ class _CalendarPageState extends State<CalendarPage> {
     return _getTasksForDate(allTasks, date).length;
   }
 
-  // Toggle reminder
   Future<void> _toggleReminder(Reminder reminder) async {
     try {
       await _reminderService.toggleReminder(reminder.id, !reminder.isActive);
@@ -101,7 +110,6 @@ class _CalendarPageState extends State<CalendarPage> {
     }
   }
 
-  // Show month picker
   Future<void> _showMonthPicker() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -111,8 +119,9 @@ class _CalendarPageState extends State<CalendarPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
+            // Keeps your date picker purple
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF2196F3),
+              primary: kPrimary,
             ),
           ),
           child: child!,
@@ -142,17 +151,21 @@ class _CalendarPageState extends State<CalendarPage> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: kBg,
+
+      // ✅ Dark AppBar
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: kBg,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back,
+              color: Color.fromRGBO(242, 244, 248, 1)),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
+            icon: const Icon(Icons.search, color: kText),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Search coming soon!')),
@@ -161,19 +174,26 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
         ],
       ),
+
       body: StreamBuilder<List<Task>>(
         stream: _taskService.getAllUserTasks(currentUserId),
         builder: (context, taskSnapshot) {
           final allTasks = taskSnapshot.data ?? [];
 
           return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
-                // Month Header with Calendar Icon
+                // ✅ Month Header
                 Container(
-                  color: Colors.white,
+                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: kSurface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: kBorder),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -182,9 +202,9 @@ class _CalendarPageState extends State<CalendarPage> {
                             .format(_focusedMonth)
                             .toUpperCase(),
                         style: const TextStyle(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A2E),
+                          color: kText,
                           letterSpacing: 1,
                         ),
                       ),
@@ -193,12 +213,14 @@ class _CalendarPageState extends State<CalendarPage> {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2196F3).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            color: kPrimary.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border:
+                                Border.all(color: kPrimary.withOpacity(0.25)),
                           ),
                           child: const Icon(
                             Icons.calendar_month,
-                            color: Color(0xFF2196F3),
+                            color: kPrimary,
                             size: 24,
                           ),
                         ),
@@ -207,32 +229,30 @@ class _CalendarPageState extends State<CalendarPage> {
                   ),
                 ),
 
-                // ✅ Week Calendar with Navigation Arrows
+                // ✅ Week Calendar with arrows (dark surface)
                 Container(
-                  color: Colors.white,
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: kSurface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: kBorder),
+                  ),
                   child: Row(
                     children: [
-                      // Left Arrow
                       IconButton(
                         onPressed: _previousWeek,
                         icon: const Icon(Icons.chevron_left),
-                        color: const Color(0xFF2196F3),
+                        color: kPrimary,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
-
-                      // Week Days
-                      Expanded(
-                        child: _buildWeekCalendar(allTasks),
-                      ),
-
-                      // Right Arrow
+                      Expanded(child: _buildWeekCalendar(allTasks)),
                       IconButton(
                         onPressed: _nextWeek,
                         icon: const Icon(Icons.chevron_right),
-                        color: const Color(0xFF2196F3),
+                        color: kPrimary,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -242,13 +262,15 @@ class _CalendarPageState extends State<CalendarPage> {
 
                 const SizedBox(height: 8),
 
-                // Task List Section
+                // ✅ Task List Section
                 _buildTaskList(allTasks),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
 
-                // Reminder Section
+                // ✅ Reminder Section (pink kept)
                 _buildReminderSection(currentUserId),
+
+                const SizedBox(height: 16),
               ],
             ),
           );
@@ -257,9 +279,8 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  /// ✅ WEEK CALENDAR (7 days) - Original Design
+  /// ✅ WEEK CALENDAR (7 days) - Dark theme
   Widget _buildWeekCalendar(List<Task> allTasks) {
-    // Generate 7 days starting from current week start
     final weekDays = List.generate(7, (index) {
       return _currentWeekStart.add(Duration(days: index));
     });
@@ -287,32 +308,32 @@ class _CalendarPageState extends State<CalendarPage> {
             },
             child: Column(
               children: [
-                // Day name (Su, Mo, Tu, etc.)
                 Text(
                   DateFormat('E').format(date).substring(0, 2),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                    color: kMuted,
                   ),
                 ),
                 const SizedBox(height: 8),
-
-                // Date with badge
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    // Date circle
                     Container(
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF2196F3)
+                            ? kPrimary
                             : isToday
-                                ? const Color(0xFF2196F3).withOpacity(0.1)
-                                : Colors.transparent,
+                                ? kPrimary.withOpacity(0.18)
+                                : kSurface2,
                         shape: BoxShape.circle,
+                        border: Border.all(
+                          color:
+                              isSelected ? kPrimary.withOpacity(0.35) : kBorder,
+                        ),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -323,13 +344,11 @@ class _CalendarPageState extends State<CalendarPage> {
                           color: isSelected
                               ? Colors.white
                               : isToday
-                                  ? const Color(0xFF2196F3)
-                                  : Colors.black,
+                                  ? kPrimary
+                                  : kText,
                         ),
                       ),
                     ),
-
-                    // Red badge with count (top-right corner)
                     if (hasDeadlines)
                       Positioned(
                         right: -2,
@@ -365,7 +384,7 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  /// TASK LIST for the selected date
+  /// TASK LIST for the selected date (dark)
   Widget _buildTaskList(List<Task> allTasks) {
     final tasksForSelectedDate = _getTasksForDate(allTasks, _selectedDate);
     final isToday = _selectedDate.day == DateTime.now().day &&
@@ -373,7 +392,7 @@ class _CalendarPageState extends State<CalendarPage> {
         _selectedDate.year == DateTime.now().year;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -389,15 +408,15 @@ class _CalendarPageState extends State<CalendarPage> {
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+                      color: kText,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     DateFormat('EEEE, MMMM d').format(_selectedDate),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      color: kMuted,
                     ),
                   ),
                 ],
@@ -407,50 +426,45 @@ class _CalendarPageState extends State<CalendarPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withOpacity(0.1),
+                    color: kPrimary.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: kPrimary.withOpacity(0.25)),
                   ),
                   child: Text(
                     '${tasksForSelectedDate.length} ${tasksForSelectedDate.length == 1 ? 'Task' : 'Tasks'}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2196F3),
+                      color: kPrimary,
                     ),
                   ),
                 ),
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // Task List
           if (tasksForSelectedDate.isEmpty)
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.event_available,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No tasks for this day',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Enjoy your free time!',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                ],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: kSurface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: kBorder),
+              ),
+              child: Center(
+                child: Column(
+                  children: const [
+                    Icon(Icons.event_available, size: 56, color: kMuted),
+                    SizedBox(height: 12),
+                    Text('No tasks for this day',
+                        style: TextStyle(fontSize: 16, color: kText)),
+                    SizedBox(height: 6),
+                    Text('Enjoy your free time!',
+                        style: TextStyle(fontSize: 14, color: kMuted)),
+                  ],
+                ),
               ),
             )
           else
@@ -468,10 +482,10 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  /// REMINDER SECTION
+  /// REMINDER SECTION (dark background, but keep pink accents)
   Widget _buildReminderSection(String userId) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -483,7 +497,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: kText,
                 ),
               ),
               ElevatedButton.icon(
@@ -491,8 +505,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CreateReminderPage(),
-                    ),
+                        builder: (context) => const CreateReminderPage()),
                   );
 
                   if (result == true && mounted) {
@@ -507,22 +520,18 @@ class _CalendarPageState extends State<CalendarPage> {
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add Reminder'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF69B4),
+                  backgroundColor: kPink, // ✅ keep pink
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-
-          // Reminder list
           StreamBuilder<List<Reminder>>(
             stream: _reminderService.getUserReminders(userId),
             builder: (context, snapshot) {
@@ -539,13 +548,14 @@ class _CalendarPageState extends State<CalendarPage> {
                 return Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.red[50],
+                    color: Colors.red.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.withOpacity(0.25)),
                   ),
                   child: Center(
                     child: Text(
                       'Error loading reminders: ${snapshot.error}',
-                      style: TextStyle(color: Colors.red[700]),
+                      style: TextStyle(color: Colors.red[200]),
                     ),
                   ),
                 );
@@ -554,24 +564,21 @@ class _CalendarPageState extends State<CalendarPage> {
               final reminders = snapshot.data ?? [];
 
               if (reminders.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: kSurface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: kBorder),
+                  ),
+                  child: Center(
                     child: Column(
-                      children: [
-                        Icon(
-                          Icons.alarm_off,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No reminders yet',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
+                      children: const [
+                        Icon(Icons.alarm_off, size: 48, color: kMuted),
+                        SizedBox(height: 12),
+                        Text('No reminders yet',
+                            style: TextStyle(fontSize: 14, color: kMuted)),
                       ],
                     ),
                   ),
@@ -594,7 +601,7 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  /// TASK CARD
+  /// TASK CARD (dark)
   Widget _buildTaskCard(Task task) {
     Color priorityColor;
     switch (task.priority) {
@@ -626,24 +633,16 @@ class _CalendarPageState extends State<CalendarPage> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => TaskDetailPage(task: task),
-          ),
+          MaterialPageRoute(builder: (context) => TaskDetailPage(task: task)),
         );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: kSurface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: kBorder),
         ),
         child: Row(
           children: [
@@ -665,7 +664,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1A1A2E),
+                      color: kText,
                       decoration: task.status == TaskStatus.completed
                           ? TextDecoration.lineThrough
                           : null,
@@ -678,12 +677,12 @@ class _CalendarPageState extends State<CalendarPage> {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
+                          color: statusColor.withOpacity(0.18),
                           borderRadius: BorderRadius.circular(6),
+                          border:
+                              Border.all(color: statusColor.withOpacity(0.25)),
                         ),
                         child: Text(
                           task.status.toString().split('.').last.toUpperCase(),
@@ -697,12 +696,12 @@ class _CalendarPageState extends State<CalendarPage> {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: priorityColor.withOpacity(0.1),
+                          color: priorityColor.withOpacity(0.18),
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                              color: priorityColor.withOpacity(0.25)),
                         ),
                         child: Text(
                           task.priority
@@ -722,18 +721,15 @@ class _CalendarPageState extends State<CalendarPage> {
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.arrow_forward_ios,
+                size: 16, color: Colors.white.withOpacity(0.55)),
           ],
         ),
       ),
     );
   }
 
-  /// REMINDER CARD
+  /// REMINDER CARD (dark surface, but keep pink icon styling)
   Widget _buildReminderCard(Reminder reminder) {
     final frequencyColor =
         ReminderService.getFrequencyColor(reminder.frequency);
@@ -742,27 +738,22 @@ class _CalendarPageState extends State<CalendarPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: kSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: kBorder),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF69B4).withOpacity(0.1),
+              color: kPink.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: kPink.withOpacity(0.25)),
             ),
             child: const Icon(
               Icons.alarm,
-              color: Color(0xFFFF69B4),
+              color: kPink,
               size: 24,
             ),
           ),
@@ -776,7 +767,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E),
+                    color: kText,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -784,20 +775,20 @@ class _CalendarPageState extends State<CalendarPage> {
                   children: [
                     Text(
                       DateFormat('hh:mm a').format(reminder.reminderTime),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: kMuted,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: frequencyColor.withOpacity(0.1),
+                        color: frequencyColor.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(4),
+                        border:
+                            Border.all(color: frequencyColor.withOpacity(0.25)),
                       ),
                       child: Text(
                         ReminderService.getFrequencyText(reminder.frequency),
@@ -813,16 +804,21 @@ class _CalendarPageState extends State<CalendarPage> {
               ],
             ),
           ),
+
+          // toggle (kept your logic & colors, just sits on dark surface)
           GestureDetector(
             onTap: () => _toggleReminder(reminder),
             child: Container(
               width: 50,
               height: 28,
               decoration: BoxDecoration(
-                color: reminder.isActive
-                    ? const Color(0xFF4CAF50)
-                    : Colors.grey[300],
+                color: reminder.isActive ? const Color(0xFF4CAF50) : kSurface2,
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: reminder.isActive
+                      ? const Color(0xFF4CAF50).withOpacity(0.25)
+                      : kBorder,
+                ),
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 200),

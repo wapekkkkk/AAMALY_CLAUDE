@@ -1,5 +1,5 @@
 // ============================================
-// FILE: lib/screens/friends_page.dart (MATCHING COLLABORATORS DESIGN)
+// FILE: lib/screens/friends_page.dart (DARK THEME UI UPDATE ONLY)
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -11,8 +11,8 @@ import '../services/firebase_auth_service.dart';
 import '../utils/logger.dart';
 import '../utils/error_handler.dart';
 import 'friend_profile_page.dart';
-import '../widgets/qr_code_display.dart'; // ✅ ADD
-import 'qr_scanner_page.dart'; // ✅ ADD
+import '../widgets/qr_code_display.dart';
+import 'qr_scanner_page.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({Key? key}) : super(key: key);
@@ -30,6 +30,18 @@ class _FriendsPageState extends State<FriendsPage>
 
   List<app_user.User> _allFriends = [];
   List<app_user.User> _filteredFriends = [];
+
+  // 🎨 Theme colors (same as Dashboard/Calendar)
+  static const Color kBg = Color(0xFF0E141B);
+  static const Color kAppBarBg = Color(0xFF0B0F14);
+  static const Color kSurface = Color(0xFF151D27);
+  static const Color kSurface2 = Color(0xFF1B2430);
+  static const Color kBorder = Color(0xFF263241);
+
+  static const Color kText = Color(0xFFF2F4F8);
+  static const Color kMuted = Color(0xFF9AA7B4);
+
+  static const Color kPrimary = Color(0xFF7C4DFF);
 
   @override
   void initState() {
@@ -78,12 +90,16 @@ class _FriendsPageState extends State<FriendsPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Remove Friend'),
-        content: Text('Are you sure you want to remove ${user.name}?'),
+        backgroundColor: kSurface,
+        title: const Text('Remove Friend', style: TextStyle(color: kText)),
+        content: Text(
+          'Are you sure you want to remove ${user.name}?',
+          style: const TextStyle(color: kMuted),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: kText)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -134,7 +150,7 @@ class _FriendsPageState extends State<FriendsPage>
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: kSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
         ),
         padding: const EdgeInsets.all(24),
@@ -145,14 +161,18 @@ class _FriendsPageState extends State<FriendsPage>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: kBorder,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 20),
             const Text(
               'Add Friend',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: kText,
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -160,21 +180,21 @@ class _FriendsPageState extends State<FriendsPage>
             InkWell(
               onTap: () {
                 Navigator.pop(context);
-                _tabController.animateTo(1); // Go to Add Friend tab
+                _tabController.animateTo(1);
               },
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: kSurface2,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[200]!),
+                  border: Border.all(color: kBorder),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.blue,
+                        color: kPrimary,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.email,
@@ -188,17 +208,21 @@ class _FriendsPageState extends State<FriendsPage>
                           Text(
                             'Search by Email',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: kText,
+                            ),
                           ),
                           SizedBox(height: 4),
                           Text(
                             'Find friends by email address',
-                            style: TextStyle(fontSize: 13, color: Colors.grey),
+                            style: TextStyle(fontSize: 13, color: kMuted),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios, size: 16),
+                    Icon(Icons.arrow_forward_ios,
+                        size: 16, color: Color.fromRGBO(242, 244, 248, 1)),
                   ],
                 ),
               ),
@@ -215,16 +239,16 @@ class _FriendsPageState extends State<FriendsPage>
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.purple[50],
+                  color: kSurface2,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.purple[200]!),
+                  border: Border.all(color: kBorder),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.purple,
+                        color: kPrimary,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.qr_code_scanner,
@@ -238,17 +262,20 @@ class _FriendsPageState extends State<FriendsPage>
                           Text(
                             'Scan QR Code',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: kText,
+                            ),
                           ),
                           SizedBox(height: 4),
                           Text(
                             'Scan friend\'s QR code',
-                            style: TextStyle(fontSize: 13, color: Colors.grey),
+                            style: TextStyle(fontSize: 13, color: kMuted),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios, size: 16),
+                    Icon(Icons.arrow_forward_ios, size: 16, color: kMuted),
                   ],
                 ),
               ),
@@ -258,12 +285,12 @@ class _FriendsPageState extends State<FriendsPage>
 
             Row(
               children: [
-                Expanded(child: Divider(color: Colors.grey[300])),
+                Expanded(child: Divider(color: kBorder)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('OR', style: TextStyle(color: Colors.grey[600])),
+                  child: Text('OR', style: TextStyle(color: kMuted)),
                 ),
-                Expanded(child: Divider(color: Colors.grey[300])),
+                Expanded(child: Divider(color: kBorder)),
               ],
             ),
 
@@ -274,9 +301,11 @@ class _FriendsPageState extends State<FriendsPage>
                 Navigator.pop(context);
                 _showMyQRCode();
               },
-              icon: const Icon(Icons.qr_code_2),
-              label: const Text('Generate My QR Code'),
+              icon: const Icon(Icons.qr_code_2, color: kPrimary),
+              label: const Text('Generate My QR Code',
+                  style: TextStyle(color: kText)),
               style: OutlinedButton.styleFrom(
+                side: BorderSide(color: kBorder),
                 padding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                 shape: RoundedRectangleBorder(
@@ -336,30 +365,30 @@ class _FriendsPageState extends State<FriendsPage>
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: kBg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: kAppBarBg,
         elevation: 0,
         title: const Text(
           'Friends',
           style: TextStyle(
-            color: Colors.black,
+            color: kText,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_add, color: Color(0xFF2196F3)),
+            icon: const Icon(Icons.person_add, color: kPrimary),
             onPressed: _showAddFriendOptions,
             tooltip: 'Add Friend',
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFF2196F3),
-          labelColor: const Color(0xFF2196F3),
-          unselectedLabelColor: Colors.grey,
+          indicatorColor: kPrimary,
+          labelColor: kPrimary,
+          unselectedLabelColor: kMuted,
           tabs: [
             const Tab(text: 'My Friends'),
             const Tab(text: 'Find Friends'),
@@ -415,16 +444,18 @@ class _FriendsPageState extends State<FriendsPage>
     return Column(
       children: [
         Container(
-          color: Colors.white,
+          color: kBg,
           padding: const EdgeInsets.all(16),
           child: TextField(
             controller: _searchController,
+            style: const TextStyle(color: kText),
             decoration: InputDecoration(
               hintText: 'Search friends...',
-              prefixIcon: const Icon(Icons.search),
+              hintStyle: const TextStyle(color: kMuted),
+              prefixIcon: const Icon(Icons.search, color: kMuted),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear),
+                      icon: const Icon(Icons.clear, color: kMuted),
                       onPressed: () {
                         _searchController.clear();
                         _searchFriends('');
@@ -432,10 +463,18 @@ class _FriendsPageState extends State<FriendsPage>
                     )
                   : null,
               filled: true,
-              fillColor: Colors.grey[100],
+              fillColor: kSurface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: kBorder),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: kPrimary, width: 1.2),
               ),
             ),
             onChanged: _searchFriends,
@@ -451,7 +490,7 @@ class _FriendsPageState extends State<FriendsPage>
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: kText,
                 ),
               ),
             ],
@@ -464,20 +503,20 @@ class _FriendsPageState extends State<FriendsPage>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.people_outline,
-                          size: 64, color: Colors.grey[400]),
+                          size: 64, color: Colors.grey[600]),
                       const SizedBox(height: 16),
                       Text(
                         _searchController.text.isEmpty
                             ? 'No friends yet'
                             : 'No friends found',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        style: const TextStyle(fontSize: 16, color: kMuted),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         _searchController.text.isEmpty
                             ? 'Tap + to add your first friend!'
                             : 'Try a different search',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                        style: const TextStyle(fontSize: 14, color: kMuted),
                       ),
                     ],
                   ),
@@ -500,15 +539,9 @@ class _FriendsPageState extends State<FriendsPage>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: kSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: kBorder),
       ),
       child: Row(
         children: [
@@ -516,7 +549,7 @@ class _FriendsPageState extends State<FriendsPage>
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: const Color(0xFF2196F3),
+                backgroundColor: kPrimary,
                 child: Text(
                   friend.initials,
                   style: const TextStyle(
@@ -536,7 +569,7 @@ class _FriendsPageState extends State<FriendsPage>
                     decoration: BoxDecoration(
                       color: Colors.green,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: kSurface, width: 2),
                     ),
                   ),
                 ),
@@ -552,7 +585,7 @@ class _FriendsPageState extends State<FriendsPage>
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E),
+                    color: kText,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -569,7 +602,7 @@ class _FriendsPageState extends State<FriendsPage>
                     const SizedBox(width: 6),
                     Text(
                       friend.statusText,
-                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      style: const TextStyle(fontSize: 13, color: kMuted),
                     ),
                   ],
                 ),
@@ -577,12 +610,12 @@ class _FriendsPageState extends State<FriendsPage>
             ),
           ),
           PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: Colors.grey[400]),
+            icon: const Icon(Icons.more_vert, color: kMuted),
+            color: kSurface,
             onSelected: (value) {
               if (value == 'remove') {
                 _removeFriend(friend);
               } else if (value == 'profile') {
-                // ✅ UPDATED: Navigate to Friend Profile
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -591,18 +624,18 @@ class _FriendsPageState extends State<FriendsPage>
                 );
               }
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
+            itemBuilder: (context) => const [
+              PopupMenuItem(
                 value: 'profile',
                 child: Row(
                   children: [
-                    Icon(Icons.person, size: 20),
+                    Icon(Icons.person, size: 20, color: kText),
                     SizedBox(width: 12),
-                    Text('View Profile'),
+                    Text('View Profile', style: TextStyle(color: kText)),
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'remove',
                 child: Row(
                   children: [
@@ -623,6 +656,7 @@ class _FriendsPageState extends State<FriendsPage>
   Widget _buildFindFriendsTab(String currentUserId) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -631,18 +665,18 @@ class _FriendsPageState extends State<FriendsPage>
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: kPrimary,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Choose how you want to add a friend',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 14, color: kMuted),
           ),
           const SizedBox(height: 24),
           _buildAddMethodCard(
             icon: Icons.email,
-            iconColor: Colors.blue,
+            iconColor: kPrimary,
             title: 'Search by Email',
             description: 'Find and add friends by email address',
             onTap: () => _showSearchByEmailDialog(currentUserId),
@@ -650,7 +684,7 @@ class _FriendsPageState extends State<FriendsPage>
           const SizedBox(height: 16),
           _buildAddMethodCard(
             icon: Icons.qr_code_scanner,
-            iconColor: Colors.purple,
+            iconColor: kPrimary,
             title: 'Scan QR Code',
             description: 'Scan your friend\'s QR code to connect instantly',
             onTap: _showQRScanner,
@@ -658,34 +692,38 @@ class _FriendsPageState extends State<FriendsPage>
           const SizedBox(height: 32),
           Row(
             children: [
-              Expanded(child: Divider(color: Colors.grey[300])),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('OR', style: TextStyle(color: Colors.grey[600])),
+              Expanded(child: Divider(color: kBorder)),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text('OR', style: TextStyle(color: kMuted)),
               ),
-              Expanded(child: Divider(color: Colors.grey[300])),
+              Expanded(child: Divider(color: kBorder)),
             ],
           ),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: kSurface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(color: kBorder),
             ),
             child: Column(
               children: [
-                const Icon(Icons.qr_code_2, size: 64, color: Color(0xFF2196F3)),
+                const Icon(Icons.qr_code_2, size: 64, color: kPrimary),
                 const SizedBox(height: 16),
                 const Text(
                   'Share Your QR Code',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: kText,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'Let others scan your unique QR code',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 13, color: kMuted),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -694,7 +732,8 @@ class _FriendsPageState extends State<FriendsPage>
                   icon: const Icon(Icons.qr_code_2),
                   label: const Text('Show My QR Code'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2196F3),
+                    backgroundColor: kPrimary,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -719,7 +758,8 @@ class _FriendsPageState extends State<FriendsPage>
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Search Friends'),
+          backgroundColor: kSurface,
+          title: const Text('Search Friends', style: TextStyle(color: kText)),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
@@ -727,12 +767,26 @@ class _FriendsPageState extends State<FriendsPage>
               children: [
                 TextField(
                   controller: searchController,
+                  style: const TextStyle(color: kText),
                   decoration: InputDecoration(
                     labelText: 'Email or Name',
+                    labelStyle: const TextStyle(color: kMuted),
                     hintText: 'friend@example.com',
-                    prefixIcon: const Icon(Icons.search),
+                    hintStyle: const TextStyle(color: kMuted),
+                    prefixIcon: const Icon(Icons.search, color: kMuted),
+                    filled: true,
+                    fillColor: kSurface2,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: kBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: kPrimary, width: 1.2),
                     ),
                   ),
                   onChanged: (value) async {
@@ -777,14 +831,16 @@ class _FriendsPageState extends State<FriendsPage>
                         final user = searchResults[index];
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: const Color(0xFF2196F3),
+                            backgroundColor: kPrimary,
                             child: Text(
                               user.initials,
                               style: const TextStyle(color: Colors.white),
                             ),
                           ),
-                          title: Text(user.name),
-                          subtitle: Text(user.email),
+                          title: Text(user.name,
+                              style: const TextStyle(color: kText)),
+                          subtitle: Text(user.email,
+                              style: const TextStyle(color: kMuted)),
                           trailing: ElevatedButton(
                             onPressed: () async {
                               try {
@@ -816,7 +872,8 @@ class _FriendsPageState extends State<FriendsPage>
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2196F3),
+                              backgroundColor: kPrimary,
+                              foregroundColor: Colors.white,
                             ),
                             child: const Text('Add'),
                           ),
@@ -825,14 +882,14 @@ class _FriendsPageState extends State<FriendsPage>
                     ),
                   )
                 else if (searchController.text.isNotEmpty)
-                  const Text('No users found'),
+                  const Text('No users found', style: TextStyle(color: kMuted)),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Close'),
+              child: const Text('Close', style: TextStyle(color: kText)),
             ),
           ],
         ),
@@ -853,24 +910,18 @@ class _FriendsPageState extends State<FriendsPage>
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: kSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[300]!),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: kBorder),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: iconColor.withOpacity(0.25)),
               ),
               child: Icon(icon, color: iconColor, size: 32),
             ),
@@ -884,18 +935,19 @@ class _FriendsPageState extends State<FriendsPage>
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+                      color: kText,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     description,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    style: const TextStyle(fontSize: 13, color: kMuted),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+            const Icon(Icons.arrow_forward_ios,
+                size: 16, color: Color.fromARGB(255, 250, 251, 252)),
           ],
         ),
       ),
@@ -918,13 +970,13 @@ class _FriendsPageState extends State<FriendsPage>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[600]),
                 const SizedBox(height: 16),
-                Text('No friend requests',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                const Text('No friend requests',
+                    style: TextStyle(fontSize: 16, color: kMuted)),
                 const SizedBox(height: 8),
-                Text('You\'re all caught up! 🎉',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+                const Text('You\'re all caught up! 🎉',
+                    style: TextStyle(fontSize: 14, color: kMuted)),
               ],
             ),
           );
@@ -938,9 +990,10 @@ class _FriendsPageState extends State<FriendsPage>
                 const Text(
                   'Received',
                   style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E)),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: kText,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Container(
@@ -983,16 +1036,9 @@ class _FriendsPageState extends State<FriendsPage>
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: kSurface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.blue[200]!),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(color: kBorder),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1001,7 +1047,7 @@ class _FriendsPageState extends State<FriendsPage>
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: const Color(0xFF2196F3),
+                    backgroundColor: kPrimary,
                     child: Text(
                       sender.initials,
                       style: const TextStyle(color: Colors.white, fontSize: 18),
@@ -1017,14 +1063,13 @@ class _FriendsPageState extends State<FriendsPage>
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A2E),
+                            color: kText,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           sender.email,
-                          style:
-                              TextStyle(fontSize: 13, color: Colors.grey[600]),
+                          style: const TextStyle(fontSize: 13, color: kMuted),
                         ),
                       ],
                     ),
@@ -1034,7 +1079,7 @@ class _FriendsPageState extends State<FriendsPage>
               const SizedBox(height: 4),
               Text(
                 'Sent ${request.timeAgoText}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: const TextStyle(fontSize: 12, color: kMuted),
               ),
               const SizedBox(height: 12),
               Row(
@@ -1043,7 +1088,8 @@ class _FriendsPageState extends State<FriendsPage>
                     child: ElevatedButton(
                       onPressed: () => _acceptRequest(request.id),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2196F3),
+                        backgroundColor: kPrimary,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
@@ -1056,10 +1102,11 @@ class _FriendsPageState extends State<FriendsPage>
                     child: OutlinedButton(
                       onPressed: () => _declineRequest(request.id),
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: kText,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
-                        side: BorderSide(color: Colors.grey[400]!),
+                        side: BorderSide(color: kBorder),
                       ),
                       child: const Text('Decline'),
                     ),
@@ -1090,7 +1137,7 @@ class _FriendsPageState extends State<FriendsPage>
   Future<void> _acceptRequest(String requestId) async {
     try {
       await _friendService.acceptFriendRequest(requestId);
-      _loadFriends(); // Refresh friends list
+      _loadFriends();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

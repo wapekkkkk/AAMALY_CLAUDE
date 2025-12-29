@@ -1,14 +1,14 @@
 // ============================================
-// FILE: lib/screens/search_page.dart (UPDATED WITH FIREBASE)
+// FILE: lib/screens/search_page.dart (DARK THEME UI UPDATE ONLY)
 // ============================================
 
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../utils/task_helper.dart';
 import 'task_detail_page.dart';
-import '../services/task_service.dart'; // ✅ NEW
-import '../services/firebase_auth_service.dart'; // ✅ NEW
-import '../utils/logger.dart'; // ✅ NEW
+import '../services/task_service.dart';
+import '../services/firebase_auth_service.dart';
+import '../utils/logger.dart';
 import 'package:intl/intl.dart';
 
 class SearchPage extends StatefulWidget {
@@ -20,13 +20,25 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final _searchController = TextEditingController();
-  final _taskService = TaskService(); // ✅ NEW
-  final _authService = FirebaseAuthService(); // ✅ NEW
+  final _taskService = TaskService();
+  final _authService = FirebaseAuthService();
 
   String _searchQuery = '';
   TaskStatus? _filterStatus;
   TaskPriority? _filterPriority;
   String _sortBy = 'deadline'; // deadline, priority, title
+
+  // 🎨 Theme colors (match FriendsPage)
+  static const Color kBg = Color(0xFF0E141B);
+  static const Color kAppBarBg = Color(0xFF0B0F14);
+  static const Color kSurface = Color(0xFF151D27);
+  static const Color kSurface2 = Color(0xFF1B2430);
+  static const Color kBorder = Color(0xFF263241);
+
+  static const Color kText = Color(0xFFF2F4F8);
+  static const Color kMuted = Color(0xFF9AA7B4);
+
+  static const Color kPrimary = Color(0xFF7C4DFF);
 
   @override
   void initState() {
@@ -92,7 +104,11 @@ class _SearchPageState extends State<SearchPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Filter & Sort'),
+        backgroundColor: kSurface,
+        title: const Text(
+          'Filter & Sort',
+          style: TextStyle(color: kText),
+        ),
         content: StatefulBuilder(
           builder: (context, setDialogState) => SingleChildScrollView(
             child: Column(
@@ -102,7 +118,11 @@ class _SearchPageState extends State<SearchPage> {
                 // Status Filter
                 const Text(
                   'Status',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: kText,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -111,20 +131,36 @@ class _SearchPageState extends State<SearchPage> {
                     FilterChip(
                       label: const Text('All'),
                       selected: _filterStatus == null,
-                      onSelected: (selected) {
-                        setDialogState(() => _filterStatus = null);
-                      },
+                      selectedColor: kPrimary.withOpacity(0.2),
+                      checkmarkColor: kPrimary,
+                      labelStyle: TextStyle(
+                        color: _filterStatus == null ? kText : kMuted,
+                        fontWeight:
+                            _filterStatus == null ? FontWeight.w600 : null,
+                      ),
+                      backgroundColor: kSurface2,
+                      side: const BorderSide(color: kBorder),
+                      onSelected: (_) =>
+                          setDialogState(() => _filterStatus = null),
                     ),
-                    ...TaskStatus.values.map((status) => FilterChip(
-                          label: Text(TaskHelper.getStatusText(status)),
-                          selected: _filterStatus == status,
-                          selectedColor: TaskHelper.getStatusColor(status)
-                              .withOpacity(0.2),
-                          onSelected: (selected) {
-                            setDialogState(
-                                () => _filterStatus = selected ? status : null);
-                          },
-                        )),
+                    ...TaskStatus.values.map((status) {
+                      final c = TaskHelper.getStatusColor(status);
+                      final selected = _filterStatus == status;
+                      return FilterChip(
+                        label: Text(TaskHelper.getStatusText(status)),
+                        selected: selected,
+                        selectedColor: c.withOpacity(0.25),
+                        checkmarkColor: c,
+                        labelStyle: TextStyle(
+                          color: selected ? kText : kMuted,
+                          fontWeight: selected ? FontWeight.w600 : null,
+                        ),
+                        backgroundColor: kSurface2,
+                        side: const BorderSide(color: kBorder),
+                        onSelected: (v) => setDialogState(
+                            () => _filterStatus = v ? status : null),
+                      );
+                    }),
                   ],
                 ),
 
@@ -133,7 +169,11 @@ class _SearchPageState extends State<SearchPage> {
                 // Priority Filter
                 const Text(
                   'Priority',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: kText,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -142,20 +182,36 @@ class _SearchPageState extends State<SearchPage> {
                     FilterChip(
                       label: const Text('All'),
                       selected: _filterPriority == null,
-                      onSelected: (selected) {
-                        setDialogState(() => _filterPriority = null);
-                      },
+                      selectedColor: kPrimary.withOpacity(0.2),
+                      checkmarkColor: kPrimary,
+                      labelStyle: TextStyle(
+                        color: _filterPriority == null ? kText : kMuted,
+                        fontWeight:
+                            _filterPriority == null ? FontWeight.w600 : null,
+                      ),
+                      backgroundColor: kSurface2,
+                      side: const BorderSide(color: kBorder),
+                      onSelected: (_) =>
+                          setDialogState(() => _filterPriority = null),
                     ),
-                    ...TaskPriority.values.map((priority) => FilterChip(
-                          label: Text(TaskHelper.getPriorityText(priority)),
-                          selected: _filterPriority == priority,
-                          selectedColor: TaskHelper.getPriorityColor(priority)
-                              .withOpacity(0.2),
-                          onSelected: (selected) {
-                            setDialogState(() =>
-                                _filterPriority = selected ? priority : null);
-                          },
-                        )),
+                    ...TaskPriority.values.map((priority) {
+                      final c = TaskHelper.getPriorityColor(priority);
+                      final selected = _filterPriority == priority;
+                      return FilterChip(
+                        label: Text(TaskHelper.getPriorityText(priority)),
+                        selected: selected,
+                        selectedColor: c.withOpacity(0.25),
+                        checkmarkColor: c,
+                        labelStyle: TextStyle(
+                          color: selected ? kText : kMuted,
+                          fontWeight: selected ? FontWeight.w600 : null,
+                        ),
+                        backgroundColor: kSurface2,
+                        side: const BorderSide(color: kBorder),
+                        onSelected: (v) => setDialogState(
+                            () => _filterPriority = v ? priority : null),
+                      );
+                    }),
                   ],
                 ),
 
@@ -164,7 +220,11 @@ class _SearchPageState extends State<SearchPage> {
                 // Sort By
                 const Text(
                   'Sort By',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: kText,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -173,23 +233,43 @@ class _SearchPageState extends State<SearchPage> {
                     ChoiceChip(
                       label: const Text('Deadline'),
                       selected: _sortBy == 'deadline',
-                      onSelected: (selected) {
-                        setDialogState(() => _sortBy = 'deadline');
-                      },
+                      selectedColor: kPrimary.withOpacity(0.25),
+                      labelStyle: TextStyle(
+                        color: _sortBy == 'deadline' ? kText : kMuted,
+                        fontWeight:
+                            _sortBy == 'deadline' ? FontWeight.w600 : null,
+                      ),
+                      backgroundColor: kSurface2,
+                      side: const BorderSide(color: kBorder),
+                      onSelected: (_) =>
+                          setDialogState(() => _sortBy = 'deadline'),
                     ),
                     ChoiceChip(
                       label: const Text('Priority'),
                       selected: _sortBy == 'priority',
-                      onSelected: (selected) {
-                        setDialogState(() => _sortBy = 'priority');
-                      },
+                      selectedColor: kPrimary.withOpacity(0.25),
+                      labelStyle: TextStyle(
+                        color: _sortBy == 'priority' ? kText : kMuted,
+                        fontWeight:
+                            _sortBy == 'priority' ? FontWeight.w600 : null,
+                      ),
+                      backgroundColor: kSurface2,
+                      side: const BorderSide(color: kBorder),
+                      onSelected: (_) =>
+                          setDialogState(() => _sortBy = 'priority'),
                     ),
                     ChoiceChip(
                       label: const Text('Title'),
                       selected: _sortBy == 'title',
-                      onSelected: (selected) {
-                        setDialogState(() => _sortBy = 'title');
-                      },
+                      selectedColor: kPrimary.withOpacity(0.25),
+                      labelStyle: TextStyle(
+                        color: _sortBy == 'title' ? kText : kMuted,
+                        fontWeight: _sortBy == 'title' ? FontWeight.w600 : null,
+                      ),
+                      backgroundColor: kSurface2,
+                      side: const BorderSide(color: kBorder),
+                      onSelected: (_) =>
+                          setDialogState(() => _sortBy = 'title'),
                     ),
                   ],
                 ),
@@ -207,15 +287,19 @@ class _SearchPageState extends State<SearchPage> {
               });
               Navigator.pop(context);
             },
-            child: const Text('Reset'),
+            child: const Text('Reset', style: TextStyle(color: kMuted)),
           ),
           ElevatedButton(
             onPressed: () {
-              setState(() {}); // Apply filters
+              setState(() {});
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7B68EE),
+              backgroundColor: kPrimary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Apply'),
           ),
@@ -237,18 +321,18 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: kBg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: kAppBarBg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: kText),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Search Tasks',
           style: TextStyle(
-            color: Colors.black,
+            color: kText,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -258,8 +342,8 @@ class _SearchPageState extends State<SearchPage> {
             icon: Icon(
               Icons.filter_list,
               color: (_filterStatus != null || _filterPriority != null)
-                  ? const Color(0xFF7B68EE)
-                  : Colors.black,
+                  ? kPrimary
+                  : kMuted,
             ),
             onPressed: _showFilterDialog,
           ),
@@ -269,17 +353,19 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           // Search Bar
           Container(
-            color: Colors.white,
+            color: kBg,
             padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _searchController,
               autofocus: true,
+              style: const TextStyle(color: kText),
               decoration: InputDecoration(
                 hintText: 'Search by title, description, or project...',
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF7B68EE)),
+                hintStyle: const TextStyle(color: kMuted),
+                prefixIcon: const Icon(Icons.search, color: kPrimary),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear),
+                        icon: const Icon(Icons.clear, color: kMuted),
                         onPressed: () {
                           _searchController.clear();
                           _performSearch('');
@@ -287,10 +373,14 @@ class _SearchPageState extends State<SearchPage> {
                       )
                     : null,
                 filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                fillColor: kSurface,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: kBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: kPrimary, width: 1.2),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -306,7 +396,7 @@ class _SearchPageState extends State<SearchPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.white,
+              color: kBg,
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -320,14 +410,15 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                       label: Text(
                         'Status: ${TaskHelper.getStatusText(_filterStatus!)}',
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 12, color: kText),
                       ),
-                      deleteIcon: const Icon(Icons.close, size: 16),
-                      onDeleted: () {
-                        setState(() => _filterStatus = null);
-                      },
-                      backgroundColor: TaskHelper.getStatusColor(_filterStatus!)
-                          .withOpacity(0.1),
+                      deleteIcon:
+                          const Icon(Icons.close, size: 16, color: kMuted),
+                      onDeleted: () => setState(() => _filterStatus = null),
+                      backgroundColor: kSurface,
+                      shape: StadiumBorder(
+                        side: const BorderSide(color: kBorder),
+                      ),
                     ),
                   if (_filterPriority != null)
                     Chip(
@@ -338,15 +429,15 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                       label: Text(
                         'Priority: ${TaskHelper.getPriorityText(_filterPriority!)}',
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 12, color: kText),
                       ),
-                      deleteIcon: const Icon(Icons.close, size: 16),
-                      onDeleted: () {
-                        setState(() => _filterPriority = null);
-                      },
-                      backgroundColor:
-                          TaskHelper.getPriorityColor(_filterPriority!)
-                              .withOpacity(0.1),
+                      deleteIcon:
+                          const Icon(Icons.close, size: 16, color: kMuted),
+                      onDeleted: () => setState(() => _filterPriority = null),
+                      backgroundColor: kSurface,
+                      shape: StadiumBorder(
+                        side: const BorderSide(color: kBorder),
+                      ),
                     ),
                 ],
               ),
@@ -373,20 +464,14 @@ class _SearchPageState extends State<SearchPage> {
                         Icon(Icons.error_outline,
                             size: 64, color: Colors.red[300]),
                         const SizedBox(height: 16),
-                        Text(
+                        const Text(
                           'Error loading tasks',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
+                          style: TextStyle(fontSize: 16, color: kMuted),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '${snapshot.error}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
+                          style: const TextStyle(fontSize: 14, color: kMuted),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -397,7 +482,6 @@ class _SearchPageState extends State<SearchPage> {
                 final allTasks = snapshot.data ?? [];
                 final filteredTasks = _filterAndSortTasks(allTasks);
 
-                // Results count
                 return Column(
                   children: [
                     // Result Count
@@ -409,8 +493,8 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                       child: Text(
                         '${filteredTasks.length} task(s) found',
-                        style: TextStyle(
-                          color: Colors.grey[600],
+                        style: const TextStyle(
+                          color: kMuted,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -429,25 +513,25 @@ class _SearchPageState extends State<SearchPage> {
                                         ? Icons.search_off
                                         : Icons.inbox_outlined,
                                     size: 64,
-                                    color: Colors.grey[400],
+                                    color: Colors.grey[600],
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
                                     _searchQuery.isEmpty
                                         ? 'Start typing to search tasks'
                                         : 'No tasks found',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 16,
-                                      color: Colors.grey[600],
+                                      color: kMuted,
                                     ),
                                   ),
                                   if (_searchQuery.isNotEmpty) ...[
                                     const SizedBox(height: 8),
-                                    Text(
+                                    const Text(
                                       'Try different keywords or filters',
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: Colors.grey[500],
+                                        color: kMuted,
                                       ),
                                     ),
                                   ],
@@ -480,6 +564,9 @@ class _SearchPageState extends State<SearchPage> {
     final isOverdue = task.isOverdue;
     final daysUntil = task.daysUntilDeadline;
 
+    final statusColor = TaskHelper.getStatusColor(task.status);
+    final priorityColor = TaskHelper.getPriorityColor(task.priority);
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -493,15 +580,9 @@ class _SearchPageState extends State<SearchPage> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: kSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: kBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -515,7 +596,7 @@ class _SearchPageState extends State<SearchPage> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1A1A2E),
+                      color: kText,
                       decoration: task.status == TaskStatus.completed
                           ? TextDecoration.lineThrough
                           : null,
@@ -527,34 +608,35 @@ class _SearchPageState extends State<SearchPage> {
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 10,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color:
-                        TaskHelper.getStatusColor(task.status).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    color: statusColor.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: statusColor.withOpacity(0.25)),
                   ),
                   child: Text(
-                    TaskHelper.getStatusText(task.status),
+                    TaskHelper.getStatusText(task.status).toUpperCase(),
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: TaskHelper.getStatusColor(task.status),
+                      color: statusColor,
+                      letterSpacing: 0.6,
                     ),
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
             // Description
             Text(
               task.description,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 13,
-                color: Colors.grey[600],
+                color: kMuted,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -566,30 +648,30 @@ class _SearchPageState extends State<SearchPage> {
             Row(
               children: [
                 // Project
-                Icon(Icons.folder_outlined, size: 14, color: Colors.grey[500]),
+                const Icon(Icons.folder_outlined, size: 14, color: kMuted),
                 const SizedBox(width: 4),
-                Text(
-                  task.projectName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
+                Expanded(
+                  child: Text(
+                    task.projectName,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: kMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
 
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
 
                 // Priority
-                Icon(
-                  Icons.flag,
-                  size: 14,
-                  color: TaskHelper.getPriorityColor(task.priority),
-                ),
+                Icon(Icons.flag, size: 14, color: priorityColor),
                 const SizedBox(width: 4),
                 Text(
                   TaskHelper.getPriorityText(task.priority),
                   style: TextStyle(
                     fontSize: 12,
-                    color: TaskHelper.getPriorityColor(task.priority),
+                    color: priorityColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -599,14 +681,18 @@ class _SearchPageState extends State<SearchPage> {
                 // Deadline
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 10,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: isOverdue
-                        ? Colors.red.withOpacity(0.1)
-                        : Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
+                        ? Colors.red.withOpacity(0.18)
+                        : Colors.blue.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: (isOverdue ? Colors.red : Colors.blue)
+                          .withOpacity(0.25),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -616,17 +702,18 @@ class _SearchPageState extends State<SearchPage> {
                         size: 12,
                         color: isOverdue ? Colors.red : Colors.blue,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Text(
                         isOverdue
-                            ? 'Overdue'
+                            ? 'OVERDUE'
                             : daysUntil == 0
-                                ? 'Today'
-                                : '${daysUntil}d',
+                                ? 'TODAY'
+                                : '${daysUntil}D',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: isOverdue ? Colors.red : Colors.blue,
+                          letterSpacing: 0.6,
                         ),
                       ),
                     ],

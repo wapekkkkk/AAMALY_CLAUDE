@@ -28,10 +28,12 @@ class AamalyApp extends StatelessWidget {
       title: 'Aamaly',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF7C4DFF),
+        ),
         useMaterial3: true,
         fontFamily: 'Poppins',
-        scaffoldBackgroundColor: const Color(0xFF0B0F14),
+        scaffoldBackgroundColor: const Color(0xFF0E141B),
       ),
       home: const LoadingScreen(),
     );

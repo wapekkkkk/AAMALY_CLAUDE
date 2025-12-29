@@ -1,6 +1,6 @@
 // ============================================
 // FILE: lib/screens/edit_profile_page.dart
-// EDIT PROFILE PAGE
+// UPDATED THEME: Dark + Neon (matches Profile)
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -15,6 +15,15 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
+  // ===== Theme (Dark) =====
+  static const Color _bg = Color(0xFF0E141B);
+  static const Color _card = Color(0xFF121A23);
+  static const Color _border = Color(0x1AFFFFFF);
+  static const Color _text = Color(0xFFF8FAFC);
+  static const Color _muted = Color(0xFF9AA4B2);
+  static const Color _accent = Color(0xFF7C4DFF);
+  static const Color _accent2 = Color(0xFF00E5FF);
+
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _authService = FirebaseAuthService();
@@ -41,18 +50,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final userId = _authService.currentUserId;
       if (userId != null) {
-        // Update user name in Firestore
         await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
@@ -68,7 +72,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context, true); // Return true to refresh profile page
+          Navigator.pop(context, true);
         }
       }
     } catch (e) {
@@ -81,11 +85,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -95,12 +95,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final userInitials = user?.initials ?? 'U';
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2196F3),
-        foregroundColor: Colors.white,
-        title: const Text('Edit Profile'),
+        backgroundColor: _bg,
+        foregroundColor: _text,
         elevation: 0,
+        title: const Text('Edit Profile'),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -108,117 +109,133 @@ class _EditProfilePageState extends State<EditProfilePage> {
           key: _formKey,
           child: Column(
             children: [
-              const SizedBox(height: 20),
-
-              // ✅ Avatar (Not editable - initials only)
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: const Color(0xFF2196F3),
-                child: Text(
-                  userInitials,
-                  style: const TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+              // Header Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_accent, _accent2],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              Text(
-                'Avatar shows your initials',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ✅ Name Field
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Full Name',
-                  prefixIcon: const Icon(Icons.person),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF2196F3),
-                      width: 2,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _accent.withOpacity(0.25),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
                     ),
-                  ),
+                  ],
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  if (value.trim().length < 2) {
-                    return 'Name must be at least 2 characters';
-                  }
-                  return null;
-                },
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: Colors.white.withOpacity(0.18),
+                      child: Text(
+                        userInitials,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Update your profile',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Your avatar shows initials',
+                            style: TextStyle(
+                              color: Color(0xE6FFFFFF),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // ✅ Email Field (Read-only)
-              TextFormField(
-                initialValue: user?.email ?? '',
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
+              // Form Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _card,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: _border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                readOnly: true,
-                enabled: false,
+                child: Column(
+                  children: [
+                    _DarkTextField(
+                      controller: _nameController,
+                      labelText: 'Full Name',
+                      prefixIcon: Icons.person,
+                      accent: _accent,
+                      enabled: true,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        if (value.trim().length < 2) {
+                          return 'Name must be at least 2 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _DarkTextField(
+                      initialValue: user?.email ?? '',
+                      labelText: 'Email',
+                      prefixIcon: Icons.email,
+                      accent: _accent,
+                      enabled: false,
+                      helperText: 'Email cannot be changed',
+                    ),
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 18),
 
-              Text(
-                'Email cannot be changed',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ✅ Save Button
+              // Buttons
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2196F3),
+                    backgroundColor: _accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     elevation: 0,
+                    disabledBackgroundColor: _accent.withOpacity(0.4),
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -234,38 +251,95 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           'Save Changes',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // ✅ Cancel Button
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF2196F3),
-                    side: const BorderSide(color: Color(0xFF2196F3)),
+                    foregroundColor: _text,
+                    side: BorderSide(color: Colors.white.withOpacity(0.22)),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   child: const Text(
                     'Cancel',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkTextField extends StatelessWidget {
+  static const Color _fieldBg = Color(0xFF0F1720);
+  static const Color _border = Color(0x1AFFFFFF);
+  static const Color _text = Color(0xFFF8FAFC);
+  static const Color _muted = Color(0xFF9AA4B2);
+
+  final TextEditingController? controller;
+  final String? initialValue;
+  final String labelText;
+  final IconData prefixIcon;
+  final Color accent;
+  final bool enabled;
+  final String? helperText;
+  final String? Function(String?)? validator;
+
+  const _DarkTextField({
+    this.controller,
+    this.initialValue,
+    required this.labelText,
+    required this.prefixIcon,
+    required this.accent,
+    required this.enabled,
+    this.helperText,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      initialValue: controller == null ? initialValue : null,
+      enabled: enabled,
+      validator: validator,
+      style: const TextStyle(color: _text, fontWeight: FontWeight.w600),
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: const TextStyle(color: _muted),
+        helperText: helperText,
+        helperStyle: const TextStyle(color: _muted),
+        prefixIcon: Icon(prefixIcon, color: enabled ? accent : _muted),
+        filled: true,
+        fillColor: _fieldBg,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _border),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: accent, width: 2),
         ),
       ),
     );

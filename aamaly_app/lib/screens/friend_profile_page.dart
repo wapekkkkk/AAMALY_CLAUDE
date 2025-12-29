@@ -1,11 +1,11 @@
 // ============================================
 // FILE: lib/screens/friend_profile_page.dart
-// FRIEND PROFILE PAGE - View Friend's Public Info
+// UPDATED THEME: Dark + Neon (matches ProfilePage)
 // ============================================
 
 import 'package:flutter/material.dart';
 import '../models/user.dart';
-import '../models/task.dart'; // ✅ ADD THIS
+import '../models/task.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/project_service.dart';
 import '../services/task_service.dart';
@@ -21,6 +21,15 @@ class FriendProfilePage extends StatefulWidget {
 }
 
 class _FriendProfilePageState extends State<FriendProfilePage> {
+  // ===== Theme (Dark) =====
+  static const Color _bg = Color(0xFF0E141B);
+  static const Color _card = Color(0xFF121A23);
+  static const Color _border = Color(0x1AFFFFFF);
+  static const Color _text = Color(0xFFF8FAFC);
+  static const Color _muted = Color(0xFF9AA4B2);
+  static const Color _accent = Color(0xFF7C4DFF);
+  static const Color _accent2 = Color(0xFF00E5FF);
+
   final _authService = FirebaseAuthService();
   final _projectService = ProjectService();
   final _taskService = TaskService();
@@ -39,27 +48,91 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
 
   Future<void> _loadFriendStats() async {
     try {
-      // Load friend's public stats
       final projects =
           await _projectService.getAllUserProjects(widget.friend.id).first;
-
       final tasks = await _taskService.getUserTasks(widget.friend.id).first;
 
-      final completedTasks =
+      final completed =
           tasks.where((t) => t.status == TaskStatus.completed).length;
 
       setState(() {
         _projectCount = projects.length;
         _taskCount = tasks.length;
-        _completedTaskCount = completedTasks;
+        _completedTaskCount = completed;
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading friend stats: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _showRemoveFriendDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _card,
+        titleTextStyle: const TextStyle(
+            color: _text, fontWeight: FontWeight.w800, fontSize: 18),
+        contentTextStyle:
+            const TextStyle(color: _muted, fontWeight: FontWeight.w600),
+        title: const Text('Remove Friend'),
+        content: Text('Remove ${widget.friend.name} from your friends list?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: _muted)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        final currentUserId = _authService.currentUserId;
+        if (currentUserId != null) {
+          await _friendService.removeFriend(
+            userId: currentUserId,
+            friendId: widget.friend.id,
+          );
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${widget.friend.name} removed from friends'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context);
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to remove friend: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _showComingSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Coming soon! 🚀'),
+        backgroundColor: _accent,
+      ),
+    );
   }
 
   @override
@@ -69,19 +142,16 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
         : '0.0';
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: _bg,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // ✅ HEADER SECTION (Read-only)
+            // ✅ HEADER (same style as ProfilePage)
             SliverToBoxAdapter(
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF2196F3),
-                      const Color(0xFF1976D2),
-                    ],
+                  gradient: const LinearGradient(
+                    colors: [_accent, _accent2],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -92,7 +162,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                 ),
                 child: Column(
                   children: [
-                    // AppBar
+                    // AppBar row
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Row(
@@ -109,18 +179,15 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
-                          // ✅ More options (Remove Friend, etc)
                           PopupMenuButton<String>(
                             icon: const Icon(Icons.more_vert,
                                 color: Colors.white),
                             onSelected: (value) {
-                              if (value == 'remove') {
-                                _showRemoveFriendDialog();
-                              }
+                              if (value == 'remove') _showRemoveFriendDialog();
                             },
                             itemBuilder: (context) => [
                               const PopupMenuItem(
@@ -141,8 +208,9 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                       ),
                     ),
 
-                    // ✅ Avatar with Initials (Read-only)
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+
+                    // Avatar
                     CircleAvatar(
                       radius: 50,
                       backgroundColor: Colors.white,
@@ -150,73 +218,70 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                         widget.friend.initials,
                         style: const TextStyle(
                           fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2196F3),
+                          fontWeight: FontWeight.w900,
+                          color: _accent,
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // ✅ Name
                     Text(
                       widget.friend.name,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
 
                     const SizedBox(height: 4),
 
-                    // ✅ Email
                     Text(
                       widget.friend.email,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // ✅ Friend Badge (instead of Edit button)
+                    // Friend badge
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
+                          horizontal: 18, vertical: 10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white, width: 2),
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(999),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.55)),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.people,
-                              color: Colors.white, size: 18),
-                          const SizedBox(width: 8),
-                          const Text(
+                          Icon(Icons.people, color: Colors.white, size: 18),
+                          SizedBox(width: 8),
+                          Text(
                             'Friend',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 26),
                   ],
                 ),
               ),
             ),
 
-            // ✅ STATS ROW (Public Stats)
+            // ✅ STATS ROW (dark cards)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -229,7 +294,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                               Icons.folder,
                               _projectCount.toString(),
                               'Projects',
-                              const Color(0xFF2196F3),
+                              _accent,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -255,87 +320,65 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
               ),
             ),
 
-            // ✅ ACTIVITY SECTION (Public Info Only)
+            // ✅ ACTIVITY
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Activity',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A2E),
+                child: _Section(
+                  title: 'Activity',
+                  child: _buildSectionCard(
+                    children: [
+                      _buildListTile(
+                        icon: Icons.assignment_outlined,
+                        title: 'Total Tasks',
+                        subtitle: '$_taskCount tasks created',
+                        onTap: null,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSectionCard(
-                      children: [
-                        _buildListTile(
-                          icon: Icons.assignment_outlined,
-                          title: 'Total Tasks',
-                          subtitle: '$_taskCount tasks created',
-                          onTap: null,
-                        ),
-                        const Divider(height: 1),
-                        _buildListTile(
-                          icon: Icons.check_circle_outline,
-                          title: 'Completed Tasks',
-                          subtitle: '$_completedTaskCount tasks completed',
-                          onTap: null,
-                        ),
-                        const Divider(height: 1),
-                        _buildListTile(
-                          icon: Icons.folder_outlined,
-                          title: 'Projects',
-                          subtitle: '$_projectCount active projects',
-                          onTap: null,
-                        ),
-                      ],
-                    ),
-                  ],
+                      _divider(),
+                      _buildListTile(
+                        icon: Icons.check_circle_outline,
+                        title: 'Completed Tasks',
+                        subtitle: '$_completedTaskCount tasks completed',
+                        onTap: null,
+                      ),
+                      _divider(),
+                      _buildListTile(
+                        icon: Icons.folder_outlined,
+                        title: 'Projects',
+                        subtitle: '$_projectCount active projects',
+                        onTap: null,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            const SliverToBoxAdapter(child: SizedBox(height: 18)),
 
-            // ✅ COLLABORATION SECTION
+            // ✅ COLLABORATION
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Collaboration',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A2E),
+                child: _Section(
+                  title: 'Collaboration',
+                  child: _buildSectionCard(
+                    children: [
+                      _buildListTile(
+                        icon: Icons.people_outline,
+                        title: 'Shared Projects',
+                        subtitle: 'View projects you collaborate on',
+                        onTap: () => _showComingSoon(),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSectionCard(
-                      children: [
-                        _buildListTile(
-                          icon: Icons.people_outline,
-                          title: 'Shared Projects',
-                          subtitle: 'View projects you collaborate on',
-                          onTap: () => _showComingSoon(),
-                        ),
-                        const Divider(height: 1),
-                        _buildListTile(
-                          icon: Icons.message_outlined,
-                          title: 'Send Message',
-                          subtitle: 'Send a message to ${widget.friend.name}',
-                          onTap: () => _showComingSoon(),
-                        ),
-                      ],
-                    ),
-                  ],
+                      _divider(),
+                      _buildListTile(
+                        icon: Icons.message_outlined,
+                        title: 'Send Message',
+                        subtitle: 'Send a message to ${widget.friend.name}',
+                        onTap: () => _showComingSoon(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -347,40 +390,53 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
     );
   }
 
-  // ✅ Build Stat Card
+  Widget _divider() =>
+      Divider(height: 1, color: Colors.white.withOpacity(0.08));
+
   Widget _buildStatCard(
       IconData icon, String value, String label, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withOpacity(0.22)),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 10),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: _text,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: _muted,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -388,17 +444,17 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
     );
   }
 
-  // ✅ Build Section Card
   Widget _buildSectionCard({required List<Widget> children}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -406,7 +462,6 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
     );
   }
 
-  // ✅ Build List Tile
   Widget _buildListTile({
     required IconData icon,
     required String title,
@@ -415,98 +470,68 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
     VoidCallback? onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF2196F3)),
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: _accent.withOpacity(0.14),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _accent.withOpacity(0.18)),
+        ),
+        child: Icon(icon, color: _accent, size: 22),
+      ),
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
+          fontSize: 15.5,
+          fontWeight: FontWeight.w800,
+          color: _text,
         ),
       ),
       subtitle: subtitle != null
           ? Text(
               subtitle,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[600],
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: _muted,
+                fontWeight: FontWeight.w600,
               ),
             )
           : null,
       trailing: trailing ??
           (onTap != null
-              ? const Icon(Icons.chevron_right, color: Colors.grey)
+              ? const Icon(Icons.chevron_right, color: _muted)
               : null),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     );
   }
+}
 
-  // ✅ Show Remove Friend Dialog
-  void _showRemoveFriendDialog() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Friend'),
-        content: Text(
-          'Are you sure you want to remove ${widget.friend.name} from your friends?',
+class _Section extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _Section({required this.title, required this.child});
+
+  static const Color _text = Color(0xFFF8FAFC);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: _text,
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      try {
-        final currentUserId = _authService.currentUserId; // ✅ Changed to getter
-        if (currentUserId != null) {
-          // ✅ FIXED: Use named parameters
-          await _friendService.removeFriend(
-            userId: currentUserId,
-            friendId: widget.friend.id,
-          );
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${widget.friend.name} removed from friends'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Navigator.pop(context); // Go back to friends page
-          }
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to remove friend: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  // ✅ Show Coming Soon
-  void _showComingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Coming soon! 🚀'),
-        backgroundColor: Color(0xFF2196F3),
-      ),
+        const SizedBox(height: 12),
+        child,
+      ],
     );
   }
 }

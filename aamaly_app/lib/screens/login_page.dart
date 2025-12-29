@@ -171,7 +171,7 @@ class _LoginPageState extends State<LoginPage> {
                             keyboardType: TextInputType.emailAddress,
                             decoration: InputDecoration(
                               labelText: 'Email address*',
-                              hintText: 'your.email@iium.edu.my',
+                              hintText: 'your.email@gmail.com',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -224,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
                             controller: _passwordController,
                             obscureText: _obscurePassword,
                             decoration: InputDecoration(
-                              hintText: '••••••••',
+                              hintText: '******',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),

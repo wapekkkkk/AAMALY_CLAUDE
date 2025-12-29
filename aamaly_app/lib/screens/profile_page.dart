@@ -25,6 +25,16 @@ class _ProfilePageState extends State<ProfilePage> {
   final _projectService = ProjectService();
   final _taskService = TaskService();
   final _friendService = FriendService();
+// ===== Theme (Dark) =====
+  static const Color _bg = Color(0xFF0E141B);
+  static const Color _card = Color(0xFF121A23);
+  static const Color _card2 = Color(0xFF0F1720);
+  static const Color _border = Color(0x1AFFFFFF); // white 10%
+  static const Color _text = Color(0xFFF8FAFC);
+  static const Color _muted = Color(0xFF9AA4B2);
+
+  static const Color _accent = Color(0xFF7C4DFF); // purple
+  static const Color _accent2 = Color(0xFF00E5FF); // cyan (optional highlight)
 
   int _projectCount = 0;
   int _taskCount = 0;
@@ -69,7 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final userInitials = user?.initials ?? 'U';
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFF0E141B),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -77,10 +87,10 @@ class _ProfilePageState extends State<ProfilePage> {
             SliverToBoxAdapter(
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
+                  gradient: const LinearGradient(
                     colors: [
-                      const Color(0xFF2196F3),
-                      const Color(0xFF1976D2),
+                      Color(0xFF7C4DFF),
+                      Color(0xFF00E5FF),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -128,7 +138,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         style: const TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2196F3),
+                          color: Color(0xFF7C4DFF),
                         ),
                       ),
                     ),
@@ -205,7 +215,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               Icons.folder,
                               _projectCount.toString(),
                               'Projects',
-                              const Color(0xFF2196F3),
+                              const Color(0xFF7C4DFF),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -243,7 +253,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A2E),
+                        color: Color.fromARGB(255, 255, 255, 255),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -255,14 +265,14 @@ class _ProfilePageState extends State<ProfilePage> {
                           subtitle: 'Name, email, bio',
                           onTap: () => _showComingSoon(),
                         ),
-                        const Divider(height: 1),
+                        const Divider(height: 1, color: Color(0x1AFFFFFF)),
                         _buildListTile(
                           icon: Icons.lock_outline,
                           title: 'Email & Password',
                           subtitle: 'Change your email or password',
                           onTap: () => _showComingSoon(),
                         ),
-                        const Divider(height: 1),
+                        const Divider(height: 1, color: Color(0x1AFFFFFF)),
                         _buildListTile(
                           icon: Icons.notifications_outlined,
                           title: 'Notifications',
@@ -276,7 +286,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               });
                               // TODO: Save to preferences
                             },
-                            activeColor: const Color(0xFF2196F3),
+                            activeColor: const Color(0xFF7C4DFF),
                           ),
                           onTap: null,
                         ),
@@ -301,7 +311,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A2E),
+                        color: Color.fromARGB(255, 255, 255, 255),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -320,7 +330,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             );
                           },
                         ),
-                        const Divider(height: 1),
+                        const Divider(height: 1, color: Color(0x1AFFFFFF)),
                         _buildListTile(
                           icon: Icons.history,
                           title: 'Task History',
@@ -355,7 +365,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A2E),
+                        color: Color.fromARGB(255, 255, 255, 255),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -367,21 +377,21 @@ class _ProfilePageState extends State<ProfilePage> {
                           subtitle: 'Learn more about the app',
                           onTap: () => _showAboutDialog(),
                         ),
-                        const Divider(height: 1),
+                        const Divider(height: 1, color: Color(0x1AFFFFFF)),
                         _buildListTile(
                           icon: Icons.privacy_tip_outlined,
                           title: 'Privacy Policy',
                           subtitle: 'How we protect your data',
                           onTap: () => _showComingSoon(),
                         ),
-                        const Divider(height: 1),
+                        const Divider(height: 1, color: Color(0x1AFFFFFF)),
                         _buildListTile(
                           icon: Icons.description_outlined,
                           title: 'Terms of Service',
                           subtitle: 'Our terms and conditions',
                           onTap: () => _showComingSoon(),
                         ),
-                        const Divider(height: 1),
+                        const Divider(height: 1, color: Color(0x1AFFFFFF)),
                         _buildListTile(
                           icon: Icons.phone_iphone,
                           title: 'Version',
@@ -431,34 +441,45 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: color.withOpacity(0.25)),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 10),
           Text(
             value,
             style: const TextStyle(
               fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              fontWeight: FontWeight.w800,
+              color: _text,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
-              color: Colors.grey[600],
+              color: _muted,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -470,13 +491,14 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildSectionCard({required List<Widget> children}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -493,29 +515,42 @@ class _ProfilePageState extends State<ProfilePage> {
     VoidCallback? onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF2196F3)),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: _accent.withOpacity(0.14),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _accent.withOpacity(0.22)),
+        ),
+        child: Icon(icon, color: _accent, size: 20),
+      ),
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: _text,
         ),
       ),
       subtitle: subtitle != null
           ? Text(
               subtitle,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[600],
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: _muted,
+                fontWeight: FontWeight.w500,
               ),
             )
           : null,
       trailing: trailing ??
           (onTap != null
-              ? const Icon(Icons.chevron_right, color: Colors.grey)
+              ? const Icon(Icons.chevron_right, color: _muted)
               : null),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      splashColor: _accent.withOpacity(0.08),
+      hoverColor: _accent.withOpacity(0.06),
     );
   }
 
@@ -570,7 +605,7 @@ class _ProfilePageState extends State<ProfilePage> {
       applicationIcon: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: const Color(0xFF2196F3),
+          color: const Color(0xFF7C4DFF),
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Icon(Icons.task_alt, color: Colors.white, size: 32),
@@ -591,7 +626,7 @@ class _ProfilePageState extends State<ProfilePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Coming soon! 🚀'),
-        backgroundColor: Color(0xFF2196F3),
+        backgroundColor: Color(0xFF7C4DFF),
       ),
     );
   }
