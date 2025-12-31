@@ -13,14 +13,7 @@ dependencies:
   # UI Components
   cupertino_icons: ^1.0.2
   
-  # Local notifications (for foreground notifications)
-  #flutter_local_notifications: ^17.0.0
-  
-  # Permission handler
-  #permission_handler: ^11.1.0
-  
-  # For badge count (optional)
-  #flutter_app_badger: ^1.5.0 #FUTURE NEED
+
   # State Management
   provider: ^6.1.1
   
