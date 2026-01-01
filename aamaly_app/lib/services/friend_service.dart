@@ -9,6 +9,7 @@ import '../models/user.dart' as app_user;
 import 'notification_service.dart'; // ✅ ADD THIS
 import '../utils/logger.dart';
 import '../utils/error_handler.dart';
+import 'push_notification_service.dart';
 
 class FriendService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -63,6 +64,8 @@ class FriendService {
         toUserId: receiverId,
         fromUserName: senderName,
       );
+
+      await PushNotificationService().showFriendRequest(senderName);
       return docRef.id;
     } catch (e) {
       Logger.error('Failed to send friend request', e);

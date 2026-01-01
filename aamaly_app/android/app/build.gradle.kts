@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.aamaly.app"
-    compileSdk = 36
+    compileSdk = 34  // ✅ Changed from 36 to 34 (must match targetSdk)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -26,7 +26,7 @@ android {
     defaultConfig {
         applicationId = "com.aamaly.app"
         minSdk = flutter.minSdkVersion
-        targetSdk = 34
+        targetSdk = 34  // ✅ Matches compileSdk
         versionCode = 1
         versionName = "1.0"
         multiDexEnabled = true

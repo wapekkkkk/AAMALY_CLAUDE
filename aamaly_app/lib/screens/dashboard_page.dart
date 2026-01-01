@@ -19,6 +19,7 @@ import 'friends_page.dart';
 import 'profile_page.dart';
 import 'notifications_page.dart';
 import '../services/notification_service.dart';
+import '../services/push_notification_service.dart'; // ✅ ADD THIS
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -34,6 +35,18 @@ class _DashboardPageState extends State<DashboardPage> {
   final _authService = FirebaseAuthService();
   final _projectService = ProjectService();
   final _taskService = TaskService();
+  @override
+  void initState() {
+    super.initState();
+    _initializeNotifications();
+  }
+
+  Future<void> _initializeNotifications() async {
+    final userId = _authService.currentUserId;
+    if (userId != null) {
+      await PushNotificationService().initialize(userId);
+    }
+  }
 
   // 🎨 App palette (kept inside file, UI only)
   static const Color kBg = Color(0xFF0E141B);

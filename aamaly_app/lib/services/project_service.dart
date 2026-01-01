@@ -1,14 +1,15 @@
 // ============================================
-// FILE: lib/services/project_service.dart
+// FILE: lib/services/project_service.dart (FIXED)
 // REAL FIRESTORE PROJECT SERVICE
 // ============================================
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/project.dart';
-import 'notification_service.dart'; // ✅ ADD
-import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADD (if not already there)
+import 'notification_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user.dart' as app_user;
+import 'push_notification_service.dart';
 
 class ProjectService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -30,7 +31,7 @@ class ProjectService {
         'description': description,
         'ownerId': ownerId,
         'collaboratorIds': collaboratorIds,
-        'color': color.value, // Store color as int
+        'color': color.value,
         'taskTypes': taskTypes,
         'dateCreated': FieldValue.serverTimestamp(),
         'totalTasks': 0,
@@ -193,7 +194,7 @@ class ProjectService {
     }
   }
 
-// ADD COLLABORATOR
+  // ADD COLLABORATOR
   Future<void> addCollaborator(String projectId, String userId) async {
     try {
       // Get project details
@@ -212,13 +213,17 @@ class ProjectService {
         'collaboratorIds': FieldValue.arrayUnion([userId]),
       });
 
-      // ✅ SEND NOTIFICATION
+      // ✅ Send in-app notification
       await NotificationService().sendProjectInviteNotification(
         toUserId: userId,
         projectName: projectName,
         projectId: projectId,
         invitedByName: inviterName,
       );
+
+      // ✅ Send push notification
+      await PushNotificationService()
+          .showAddedToProject(projectName, inviterName);
     } catch (e) {
       throw Exception('Failed to add collaborator: $e');
     }
@@ -227,15 +232,24 @@ class ProjectService {
   // REMOVE COLLABORATOR
   Future<void> removeCollaborator(String projectId, String userId) async {
     try {
+      // ✅ Get project name BEFORE removing
+      final projectDoc =
+          await _firestore.collection('projects').doc(projectId).get();
+      final projectName = projectDoc.data()?['name'] ?? 'Unknown Project';
+
+      // Remove collaborator
       await _firestore.collection('projects').doc(projectId).update({
         'collaboratorIds': FieldValue.arrayRemove([userId]),
       });
+
+      // ✅ Send push notification to removed user
+      await PushNotificationService().showRemovedFromProject(projectName);
     } catch (e) {
       throw Exception('Failed to remove collaborator: $e');
     }
   }
 
-  // UPDATE PROJECT STATS (called when tasks change)
+  // ✅ FIXED: UPDATE PROJECT STATS (called when tasks change)
   Future<void> updateProjectStats(String projectId) async {
     try {
       // Count tasks
@@ -251,6 +265,7 @@ class ProjectService {
           .where((doc) => doc.data()['status'] == 'inProgress')
           .length;
 
+      // ✅ ONLY update task stats - nothing else!
       await _firestore.collection('projects').doc(projectId).update({
         'totalTasks': totalTasks,
         'completedTasks': completedTasks,

@@ -16,7 +16,9 @@ dependencies:
 
   # State Management
   provider: ^6.1.1
-  
+  # ✅ ADD THESE FOR PUSH NOTIFICATIONS:
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
   # Date & Time
   intl: ^0.18.1
   

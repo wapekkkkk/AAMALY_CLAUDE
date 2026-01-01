@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
-
+import '../services/permissions_service.dart';
 import '../models/task.dart';
 import '../utils/task_helper.dart';
 import '../widgets/edit_task_bottom_sheet.dart';
@@ -42,6 +42,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   String? _projectCode;
   String? _projectOwnerId;
   Color _projectColor = _defaultTaskColor;
+  List<String> _projectCollaboratorIds = []; // ✅ ADD THIS
+  String? _taskCreatorId;
 
   // cache for user names (for assignee/uploader)
   final Map<String, String> _userNameCache = {};
@@ -70,12 +72,15 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _projectCode = null;
         _projectOwnerId = null;
         _projectColor = _defaultTaskColor;
+        _projectCollaboratorIds = []; // ✅ ADD
+        _taskCreatorId = null;
         _loadingProject = false;
       });
       return;
     }
 
     try {
+      // Get project
       QuerySnapshot<Map<String, dynamic>> snap = await _firestore
           .collection('projects')
           .where('name', isEqualTo: key)
@@ -89,7 +94,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
             .limit(1)
             .get();
       }
-
+// ✅ Get task creator
+      final taskDoc =
+          await _firestore.collection('tasks').doc(_currentTask.id).get();
+      final taskData = taskDoc.data();
+      final creatorId = taskData?['createdBy'] as String?;
       if (snap.docs.isNotEmpty) {
         final doc = snap.docs.first;
         final data = doc.data();
@@ -103,6 +112,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           _projectCode = (data['code'] ?? '').toString();
           _projectOwnerId = (data['ownerId'] ?? '').toString();
           _projectColor = resolvedColor;
+          _projectCollaboratorIds =
+              List<String>.from(data['collaboratorIds'] ?? []); // ✅ ADD
+          _taskCreatorId = creatorId; // ✅ ADD
           _loadingProject = false;
         });
       } else {
@@ -112,6 +124,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           _projectCode = null;
           _projectOwnerId = null;
           _projectColor = _defaultTaskColor;
+          _projectCollaboratorIds = []; // ✅ ADD
+          _taskCreatorId = creatorId;
           _loadingProject = false;
         });
       }
@@ -122,6 +136,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _projectCode = null;
         _projectOwnerId = null;
         _projectColor = _defaultTaskColor;
+        _projectCollaboratorIds = []; // ✅ ADD
+        _taskCreatorId = null; // ✅ ADD
         _loadingProject = false;
       });
     }
@@ -145,23 +161,48 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   }
 
   bool get _canEdit {
-    // If no project detected, keep your previous behavior (allow)
     if (_projectId == null) return true;
 
-    // Owner or assigned user can edit
-    return _projectOwnerId == _currentUserId ||
-        _currentTask.assignedToUserId == _currentUserId;
+    return PermissionsService.canEditTask(
+      task: _currentTask,
+      userId: _currentUserId,
+      projectOwnerId: _projectOwnerId ?? '',
+      taskCreatorId: _taskCreatorId,
+    );
   }
 
   bool get _canDelete {
     if (_projectId == null) return true;
-    return _projectOwnerId == _currentUserId;
+
+    return PermissionsService.canDeleteTask(
+      task: _currentTask,
+      userId: _currentUserId,
+      projectOwnerId: _projectOwnerId ?? '',
+      taskCreatorId: _taskCreatorId,
+    );
   }
 
   bool get _canUploadFiles {
     if (_projectId == null) return true;
-    return _projectOwnerId == _currentUserId ||
-        _currentTask.assignedToUserId == _currentUserId;
+
+    // Same permissions as edit
+    return PermissionsService.canEditTask(
+      task: _currentTask,
+      userId: _currentUserId,
+      projectOwnerId: _projectOwnerId ?? '',
+      taskCreatorId: _taskCreatorId,
+    );
+  }
+
+  bool get _canMarkDone {
+    if (_projectId == null) return true;
+
+    return PermissionsService.canMarkAsDone(
+      task: _currentTask,
+      userId: _currentUserId,
+      projectOwnerId: _projectOwnerId ?? '',
+      projectCollaboratorIds: _projectCollaboratorIds,
+    );
   }
 
   void _showEditBottomSheet() async {
@@ -389,7 +430,44 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               ],
             ),
           ),
-
+          if (_projectId != null && !_loadingProject)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _canEdit
+                    ? Colors.blue.withOpacity(0.08)
+                    : Colors.orange.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _canEdit
+                      ? Colors.blue.withOpacity(0.3)
+                      : Colors.orange.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _canEdit ? Icons.edit : Icons.visibility,
+                    size: 16,
+                    color: _canEdit ? Colors.blue : Colors.orange,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _canEdit
+                          ? 'You can edit this task'
+                          : 'View only - You can\'t edit this task',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _canEdit ? Colors.blue : Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // ✅ WHITE SHEET BODY (this is what your screenshot is missing)
           Expanded(
             child: Container(

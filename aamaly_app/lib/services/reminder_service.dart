@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../models/reminder.dart';
 import '../utils/logger.dart';
 import '../utils/error_handler.dart';
+import 'reminder_notification_scheduler.dart';
 
 class ReminderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -38,6 +39,19 @@ class ReminderService {
       });
 
       Logger.database('CREATE', 'reminders', docRef.id);
+
+      // ✅ ADD: Schedule push notification
+      final reminder = Reminder(
+        id: docRef.id,
+        name: name,
+        frequency: frequency,
+        reminderTime: reminderTime,
+        description: description ?? '',
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+      await ReminderNotificationScheduler().scheduleReminder(reminder);
+
       Logger.success('Reminder created: ${docRef.id}', 'ReminderService');
 
       return docRef.id;
@@ -137,6 +151,13 @@ class ReminderService {
       await _firestore.collection('reminders').doc(reminderId).update(updates);
 
       Logger.database('UPDATE', 'reminders', reminderId);
+
+      // ✅ ADD: Reschedule notification
+      final reminder = await getReminderById(reminderId);
+      if (reminder != null) {
+        await ReminderNotificationScheduler().scheduleReminder(reminder);
+      }
+
       Logger.success('Reminder updated', 'ReminderService');
     } catch (e) {
       Logger.error('Failed to update reminder', e);
@@ -158,6 +179,19 @@ class ReminderService {
       });
 
       Logger.database('UPDATE', 'reminders', reminderId);
+
+      // ✅ ADD: Handle notification based on active status
+      if (isActive) {
+        // Reschedule notification
+        final reminder = await getReminderById(reminderId);
+        if (reminder != null) {
+          await ReminderNotificationScheduler().scheduleReminder(reminder);
+        }
+      } else {
+        // Cancel notification
+        await ReminderNotificationScheduler().cancelReminder(reminderId);
+      }
+
       Logger.success(
         'Reminder ${isActive ? "activated" : "deactivated"}',
         'ReminderService',
@@ -176,6 +210,9 @@ class ReminderService {
   Future<void> deleteReminder(String reminderId) async {
     try {
       Logger.service('ReminderService', 'deleteReminder', 'id: $reminderId');
+
+      // ✅ ADD: Cancel notification first
+      await ReminderNotificationScheduler().cancelReminder(reminderId);
 
       await _firestore.collection('reminders').doc(reminderId).delete();
 
@@ -197,6 +234,11 @@ class ReminderService {
           .collection('reminders')
           .where('userId', isEqualTo: userId)
           .get();
+
+      // ✅ ADD: Cancel all notifications
+      for (var doc in reminders.docs) {
+        await ReminderNotificationScheduler().cancelReminder(doc.id);
+      }
 
       final batch = _firestore.batch();
       for (var doc in reminders.docs) {

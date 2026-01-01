@@ -1054,22 +1054,42 @@ class _CollaboratorsDialogState extends State<_CollaboratorsDialog>
   }
 
   Widget _buildMembersTab() {
+    // ✅ FIX: Get current user ID
+    final currentUserId = FirebaseAuthService().currentUserId ?? '';
+    final isCurrentUserOwner = widget.project.ownerId == currentUserId;
+
     return ListView(
       children: [
-        _buildMemberCard(
-          name: 'You (Owner)',
-          email: '',
-          isOwner: true,
-          onRemove: null,
+        // ✅ FIX: Show actual owner, not always "You"
+        FutureBuilder<app_user.User?>(
+          future: _getOwnerUser(widget.project.ownerId),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const SizedBox.shrink();
+            }
+
+            final owner = snapshot.data!;
+            final isMe = owner.id == currentUserId;
+
+            return _buildMemberCard(
+              name: isMe ? 'You (Owner)' : owner.name,
+              email: isMe ? '' : owner.email,
+              isOwner: true,
+              onRemove: null,
+            );
+          },
         ),
+
+        // Show collaborators
         ...widget.collaborators.map(
           (c) => _buildMemberCard(
-            name: c.name,
-            email: c.email,
+            name: c.id == currentUserId ? 'You' : c.name,
+            email: c.id == currentUserId ? '' : c.email,
             isOwner: false,
             onRemove: () => widget.onRemove(c.id),
           ),
         ),
+
         if (widget.collaborators.isEmpty)
           Padding(
             padding: const EdgeInsets.all(30.0),
@@ -1086,6 +1106,22 @@ class _CollaboratorsDialogState extends State<_CollaboratorsDialog>
           ),
       ],
     );
+  }
+
+// ✅ ADD THIS HELPER METHOD in _CollaboratorsDialogState class
+  Future<app_user.User?> _getOwnerUser(String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      if (doc.exists) {
+        return app_user.User.fromMap(doc.data()!, doc.id);
+      }
+    } catch (e) {
+      print('Error getting owner: $e');
+    }
+    return null;
   }
 
   Widget _buildMemberCard({

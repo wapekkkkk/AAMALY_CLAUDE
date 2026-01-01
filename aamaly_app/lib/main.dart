@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/loading_page.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'services/push_notification_service.dart';
 
 void main() async {
   // Ensure Flutter is initialized
@@ -15,7 +18,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
+  tz.initializeTimeZones();
   runApp(const AamalyApp());
 }
 

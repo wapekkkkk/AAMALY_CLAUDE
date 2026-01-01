@@ -1,10 +1,12 @@
 // ============================================
-// FILE: lib/services/task_service.dart (UPDATED)
+// FILE: lib/services/task_service.dart (FIXED)
 // REAL FIRESTORE TASK SERVICE
 // ============================================
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'notification_service.dart';
+import 'push_notification_service.dart';
+import 'deadline_notification_scheduler.dart';
 import '../models/task.dart';
 import 'project_service.dart';
 
@@ -12,7 +14,7 @@ class TaskService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ProjectService _projectService = ProjectService();
 
-// CREATE TASK
+  // CREATE TASK
   Future<String> createTask({
     required String title,
     required String description,
@@ -41,15 +43,30 @@ class TaskService {
 
       // Update project stats if projectId exists
       if (projectId != null) {
-        await _projectService.updateProjectStats(projectId);
+        await _projectService.updateProjectStats(projectId); // ✅ Removed userId
       }
 
-      // ✅ SEND NOTIFICATION if task is assigned
+      // ✅ SCHEDULE DEADLINE NOTIFICATIONS (for all tasks)
+      final task = Task(
+        id: docRef.id,
+        title: title,
+        description: description,
+        deadline: deadline,
+        status: _stringToTaskStatus(status),
+        priority: _stringToTaskPriority(priority),
+        projectName: projectName,
+        assignedToUserId: assignedToUserId,
+      );
+      await DeadlineNotificationScheduler()
+          .scheduleTaskDeadlineNotifications(task);
+
+      // ✅ SEND NOTIFICATIONS if task is assigned
       if (assignedToUserId != null && assignedToUserId.isNotEmpty) {
         final creatorDoc =
             await _firestore.collection('users').doc(createdBy).get();
         final creatorName = creatorDoc.data()?['name'] ?? 'Someone';
 
+        // In-app notification
         await NotificationService().sendTaskAssignedNotification(
           toUserId: assignedToUserId,
           taskTitle: title,
@@ -57,6 +74,9 @@ class TaskService {
           projectName: projectName,
           assignedByName: creatorName,
         );
+
+        // Push notification
+        await PushNotificationService().showTaskAssigned(title, creatorName);
       }
 
       return docRef.id;
@@ -104,7 +124,7 @@ class TaskService {
     });
   }
 
-  // ✅ NEW: GET MY TASKS (created by me OR assigned to me)
+  // ✅ GET MY TASKS (created by me OR assigned to me)
   // This is the recommended method for dashboard - clearer name than getAllUserTasks
   Stream<List<Task>> getMyTasks(String userId) {
     return _firestore.collection('tasks').snapshots().map((snapshot) {
@@ -166,7 +186,7 @@ class TaskService {
       if (updates.containsKey('status')) {
         final task = await getTaskById(taskId);
         if (task != null && task.projectName.isNotEmpty) {
-          // Find project by task's projectId
+          // ✅ Find project by task's projectName
           final projectQuery = await _firestore
               .collection('projects')
               .where('code', isEqualTo: task.projectName)
@@ -174,8 +194,8 @@ class TaskService {
               .get();
 
           if (projectQuery.docs.isNotEmpty) {
-            await _projectService
-                .updateProjectStats(projectQuery.docs.first.id);
+            await _projectService.updateProjectStats(
+                projectQuery.docs.first.id); // ✅ Removed userId
           }
         }
       }
@@ -187,6 +207,9 @@ class TaskService {
   // DELETE TASK
   Future<void> deleteTask(String taskId) async {
     try {
+      // ✅ Cancel deadline notifications first
+      await DeadlineNotificationScheduler().cancelTaskNotifications(taskId);
+
       final task = await getTaskById(taskId);
       await _firestore.collection('tasks').doc(taskId).delete();
 
@@ -199,7 +222,8 @@ class TaskService {
             .get();
 
         if (projectQuery.docs.isNotEmpty) {
-          await _projectService.updateProjectStats(projectQuery.docs.first.id);
+          await _projectService.updateProjectStats(
+              projectQuery.docs.first.id); // ✅ Removed userId
         }
       }
     } catch (e) {
@@ -210,6 +234,8 @@ class TaskService {
   // MARK TASK AS COMPLETE
   Future<void> markAsComplete(String taskId) async {
     await updateTask(taskId, {'status': 'completed'});
+    // ✅ Cancel deadline notifications when completed
+    await DeadlineNotificationScheduler().cancelTaskNotifications(taskId);
   }
 
   // MARK TASK AS IN PROGRESS
