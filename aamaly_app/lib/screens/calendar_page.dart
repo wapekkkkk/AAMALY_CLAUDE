@@ -744,6 +744,7 @@ class _CalendarPageState extends State<CalendarPage> {
       ),
       child: Row(
         children: [
+          // Icon
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -758,6 +759,8 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
           ),
           const SizedBox(width: 12),
+
+          // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,12 +786,15 @@ class _CalendarPageState extends State<CalendarPage> {
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: frequencyColor.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(4),
-                        border:
-                            Border.all(color: frequencyColor.withOpacity(0.25)),
+                        border: Border.all(
+                          color: frequencyColor.withOpacity(0.25),
+                        ),
                       ),
                       child: Text(
                         ReminderService.getFrequencyText(reminder.frequency),
@@ -805,37 +811,112 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
           ),
 
-          // toggle (kept your logic & colors, just sits on dark surface)
-          GestureDetector(
-            onTap: () => _toggleReminder(reminder),
-            child: Container(
-              width: 50,
-              height: 28,
-              decoration: BoxDecoration(
-                color: reminder.isActive ? const Color(0xFF4CAF50) : kSurface2,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: reminder.isActive
-                      ? const Color(0xFF4CAF50).withOpacity(0.25)
-                      : kBorder,
-                ),
-              ),
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
-                alignment: reminder.isActive
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
+          // Toggle Switch
+          Switch(
+            value: reminder.isActive,
+            activeColor: kPink,
+            onChanged: (value) async {
+              try {
+                await _reminderService.toggleReminder(reminder.id, value);
+
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      value ? 'Reminder activated' : 'Reminder deactivated',
+                    ),
+                    backgroundColor: kSurface2,
+                    duration: const Duration(seconds: 2),
                   ),
-                ),
-              ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to toggle reminder: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+          ),
+
+          // Delete Button
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20),
+            color: Colors.red,
+            onPressed: () => _showDeleteReminderDialog(reminder),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteReminderDialog(Reminder reminder) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: kSurface,
+        titleTextStyle: const TextStyle(
+          color: kText,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+        contentTextStyle: const TextStyle(color: kMuted),
+        title: const Text('Delete Reminder'),
+        content: Text(
+          'Are you sure you want to delete "${reminder.name}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: kText)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
+            onPressed: () async {
+              Navigator.pop(context); // close confirm dialog
+
+              if (!mounted) return;
+
+              // show loading dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(color: kPink),
+                ),
+              );
+
+              try {
+                await _reminderService.deleteReminder(reminder.id);
+
+                if (!mounted) return;
+                Navigator.pop(context); // close loading
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Reminder deleted successfully!'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                Navigator.pop(context); // close loading
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to delete reminder: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete'),
           ),
         ],
       ),
