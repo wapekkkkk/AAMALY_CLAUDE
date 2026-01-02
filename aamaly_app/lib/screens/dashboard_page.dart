@@ -4,6 +4,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 import '../models/task.dart';
 import '../models/project.dart';
 import '../services/firebase_auth_service.dart';
@@ -19,7 +21,10 @@ import 'friends_page.dart';
 import 'profile_page.dart';
 import 'notifications_page.dart';
 import '../services/notification_service.dart';
-import '../services/push_notification_service.dart'; // ✅ ADD THIS
+import '../services/push_notification_service.dart';
+import '../screens/fcm_test_page.dart'; // ✅ ADD THIS
+import '../services/push_notification_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -39,6 +44,11 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _initializeNotifications();
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId != null) {
+      PushNotificationService().initialize(userId);
+      print('✅ Push notifications initialized for user: $userId');
+    }
   }
 
   Future<void> _initializeNotifications() async {

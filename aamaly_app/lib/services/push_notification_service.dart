@@ -432,4 +432,31 @@ class PushNotificationService {
   Future<void> cancelNotification(int id) async {
     await _localNotifications.cancel(id);
   }
+
+  Future<void> sendCustomNotification({
+    required String fcmToken,
+    required String title,
+    required String body,
+  }) async {
+    try {
+      await _localNotifications.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'project_updates',
+            'Project Updates',
+            channelDescription: 'Notifications about project updates',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
+        ),
+      );
+    } catch (e) {
+      Logger.error('Failed to send custom notification', e);
+      throw Exception('Failed to send notification');
+    }
+  }
 }

@@ -1,7 +1,6 @@
 // ============================================
 // FILE: lib/services/reminder_notification_scheduler.dart
-// REMINDER NOTIFICATION SCHEDULER
-// Schedules notifications for calendar reminders
+// REMINDER NOTIFICATION SCHEDULER (CORRECT - Accepts Reminder object)
 // ============================================
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -22,25 +21,37 @@ class ReminderNotificationScheduler {
   // SCHEDULE REMINDER NOTIFICATIONS
   // ============================================
 
-  /// Schedule reminder notification
+  /// Schedule reminder notification (✅ CORRECT - Accepts Reminder object)
   Future<void> scheduleReminder(Reminder reminder) async {
     try {
+      print(
+          '🔍 Scheduling reminder: ${reminder.name} at ${reminder.reminderTime}');
+
       // Cancel existing notification for this reminder
       await cancelReminder(reminder.id);
 
       // Don't schedule if inactive
-      if (!reminder.isActive) return;
+      if (!reminder.isActive) {
+        print('⏸️ Reminder is inactive, not scheduling');
+        return;
+      }
 
       final now = DateTime.now();
       final reminderTime = reminder.reminderTime;
 
       // Skip if reminder time is in the past
       if (reminderTime.isBefore(now)) {
+        print('⚠️ Reminder time is in the past: $reminderTime');
+
         // For recurring reminders, schedule next occurrence
         if (reminder.frequency != ReminderFrequency.once) {
           final nextTime =
               _getNextReminderTime(reminderTime, reminder.frequency, now);
+          print('📅 Scheduling next occurrence at: $nextTime');
+
           await _scheduleReminderNotification(reminder, nextTime);
+        } else {
+          print('⏭️ One-time reminder in the past, skipping');
         }
         return;
       }
@@ -48,18 +59,25 @@ class ReminderNotificationScheduler {
       // Schedule the notification
       await _scheduleReminderNotification(reminder, reminderTime);
 
+      print('✅ Reminder scheduled successfully!');
+
       Logger.service('ReminderNotificationScheduler', 'Scheduled',
           'Reminder: ${reminder.name}, Time: $reminderTime');
     } catch (e) {
+      print('❌ Failed to schedule reminder: $e');
       Logger.error('Failed to schedule reminder', e);
     }
   }
 
   /// Schedule reminder notification at specific time
   Future<void> _scheduleReminderNotification(
-      Reminder reminder, DateTime scheduledTime) async {
+    Reminder reminder,
+    DateTime scheduledTime,
+  ) async {
     try {
       final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
+
+      print('🔔 Scheduling notification for: $tzScheduledTime');
 
       const androidDetails = AndroidNotificationDetails(
         'reminders',
@@ -69,14 +87,12 @@ class ReminderNotificationScheduler {
         priority: Priority.max,
         playSound: true,
         enableVibration: true,
-        sound: RawResourceAndroidNotificationSound('notification'),
       );
 
       const iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
-        sound: 'notification.mp3',
       );
 
       const details = NotificationDetails(
@@ -84,11 +100,14 @@ class ReminderNotificationScheduler {
         iOS: iosDetails,
       );
 
+      final notificationId = _getReminderId(reminder.id);
+      print('🆔 Notification ID: $notificationId');
+
       // Schedule based on frequency
       switch (reminder.frequency) {
         case ReminderFrequency.once:
           await _localNotifications.zonedSchedule(
-            _getReminderId(reminder.id),
+            notificationId,
             '🔔 Reminder',
             reminder.name,
             tzScheduledTime,
@@ -98,11 +117,12 @@ class ReminderNotificationScheduler {
             androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
             payload: '{"type":"reminder","id":"${reminder.id}"}',
           );
+          print('✅ One-time reminder scheduled');
           break;
 
         case ReminderFrequency.daily:
           await _localNotifications.zonedSchedule(
-            _getReminderId(reminder.id),
+            notificationId,
             '🔔 Daily Reminder',
             reminder.name,
             tzScheduledTime,
@@ -113,11 +133,12 @@ class ReminderNotificationScheduler {
             matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
             payload: '{"type":"reminder","id":"${reminder.id}"}',
           );
+          print('✅ Daily reminder scheduled');
           break;
 
         case ReminderFrequency.weekly:
           await _localNotifications.zonedSchedule(
-            _getReminderId(reminder.id),
+            notificationId,
             '🔔 Weekly Reminder',
             reminder.name,
             tzScheduledTime,
@@ -129,12 +150,13 @@ class ReminderNotificationScheduler {
                 DateTimeComponents.dayOfWeekAndTime, // Repeat weekly
             payload: '{"type":"reminder","id":"${reminder.id}"}',
           );
+          print('✅ Weekly reminder scheduled');
           break;
 
         case ReminderFrequency.monthly:
           // Monthly requires manual rescheduling after each occurrence
           await _localNotifications.zonedSchedule(
-            _getReminderId(reminder.id),
+            notificationId,
             '🔔 Monthly Reminder',
             reminder.name,
             tzScheduledTime,
@@ -145,13 +167,16 @@ class ReminderNotificationScheduler {
             payload:
                 '{"type":"reminder","id":"${reminder.id}","reschedule":"monthly"}',
           );
+          print('✅ Monthly reminder scheduled');
           break;
       }
 
       Logger.service('ReminderNotificationScheduler', 'Notification Scheduled',
           'Time: $tzScheduledTime, Frequency: ${reminder.frequency}');
     } catch (e) {
+      print('❌ Failed to schedule notification: $e');
       Logger.error('Failed to schedule reminder notification', e);
+      rethrow;
     }
   }
 
@@ -204,9 +229,12 @@ class ReminderNotificationScheduler {
   Future<void> cancelReminder(String reminderId) async {
     try {
       await _localNotifications.cancel(_getReminderId(reminderId));
+      print('🗑️ Cancelled reminder: $reminderId');
+
       Logger.service('ReminderNotificationScheduler', 'Cancelled',
           'Reminder: $reminderId');
     } catch (e) {
+      print('❌ Failed to cancel reminder: $e');
       Logger.error('Failed to cancel reminder', e);
     }
   }

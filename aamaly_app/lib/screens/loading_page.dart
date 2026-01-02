@@ -56,7 +56,7 @@ class LoadingScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
 
-              const Spacer(flex: 3),
+              const Spacer(flex: 2),
 
               // Get Started Button (Purple Outline)
               SizedBox(

@@ -7,16 +7,20 @@ plugins {
 
 android {
     namespace = "com.aamaly.app"
-    compileSdk = 34  // ✅ Changed from 36 to 34 (must match targetSdk)
+    compileSdk = 36  // ✅ Updated to 36 for plugin compatibility
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        // ✅ Updated to Java 11 for desugaring support
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+        
+        // ✅ Enable core library desugaring (required for flutter_local_notifications)
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"  // ✅ Updated to match Java 11
     }
 
     sourceSets {
@@ -26,7 +30,7 @@ android {
     defaultConfig {
         applicationId = "com.aamaly.app"
         minSdk = flutter.minSdkVersion
-        targetSdk = 34  // ✅ Matches compileSdk
+        targetSdk = 34  // ✅ Keep at 34 for device compatibility
         versionCode = 1
         versionName = "1.0"
         multiDexEnabled = true
@@ -45,4 +49,7 @@ flutter {
 
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
+    
+    // ✅ Add core library desugaring dependency
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import '../services/push_notification_service.dart';
 import '../models/project.dart';
 import '../models/task.dart';
 import '../services/friend_service.dart';
@@ -49,6 +49,148 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   void initState() {
     super.initState();
     _project = widget.project;
+  }
+
+  Future<void> _notifyAllCollaborators() async {
+    final currentUserId = _authService.currentUserId ?? '';
+
+    // Check if user is owner
+    if (_project.ownerId != currentUserId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Only project owner can send notifications'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+
+      // Get all tasks in this project
+      final tasks = await _firestore
+          .collection('tasks')
+          .where('projectId', isEqualTo: _project.id)
+          .get();
+
+      print('🔍 Total tasks in project: ${tasks.docs.length}'); // ✅ DEBUG
+
+      // Find users with incomplete tasks
+      final Map<String, int> userTaskCounts = {};
+
+      for (var taskDoc in tasks.docs) {
+        final taskData = taskDoc.data();
+        final status = taskData['status'] as String?;
+        final assignedTo = taskData['assignedToUserId'] as String?;
+
+        print(
+            '🔍 Task: ${taskData['title']} | Status: $status | Assigned: $assignedTo'); // ✅ DEBUG
+
+        // Only count incomplete tasks
+        if (assignedTo != null &&
+            assignedTo.isNotEmpty &&
+            status != 'completed') {
+          userTaskCounts[assignedTo] = (userTaskCounts[assignedTo] ?? 0) + 1;
+          print('✅ Counted task for user: $assignedTo'); // ✅ DEBUG
+        }
+      }
+
+      print('🔍 Users with pending tasks: $userTaskCounts'); // ✅ DEBUG
+
+      if (userTaskCounts.isEmpty) {
+        if (mounted) Navigator.pop(context);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No pending tasks to notify about!'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Send notifications to each user with pending tasks
+      int notificationsSent = 0;
+
+      for (var entry in userTaskCounts.entries) {
+        final userId = entry.key;
+        final taskCount = entry.value;
+
+        print(
+            '🔍 Trying to notify user: $userId with $taskCount tasks'); // ✅ DEBUG
+
+        try {
+          // Get user's FCM token
+          final userDoc =
+              await _firestore.collection('users').doc(userId).get();
+          final userData = userDoc.data();
+          final fcmToken = userData?['fcmToken'] as String?;
+          final userName = userData?['name'] as String? ?? 'User';
+
+          print(
+              '🔍 User: $userName | FCM Token: ${fcmToken != null ? "Found" : "Missing"}'); // ✅ DEBUG
+
+          if (fcmToken != null && fcmToken.isNotEmpty) {
+            // ✅ IMPORTANT: This only sends LOCAL notification, not to other devices!
+            await PushNotificationService().sendCustomNotification(
+              fcmToken: fcmToken,
+              title: '${_project.name} - Pending Tasks',
+              body:
+                  'You have $taskCount pending task${taskCount > 1 ? 's' : ''} to complete!',
+            );
+
+            print('✅ Notification sent to $userName'); // ✅ DEBUG
+            notificationsSent++;
+          } else {
+            print('❌ No FCM token for $userName'); // ✅ DEBUG
+          }
+        } catch (e) {
+          print('❌ Failed to notify user $userId: $e'); // ✅ DEBUG
+        }
+      }
+
+      print('🎉 Total notifications sent: $notificationsSent'); // ✅ DEBUG
+
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              notificationsSent > 0
+                  ? 'Notified $notificationsSent collaborator${notificationsSent != 1 ? 's' : ''} about pending tasks!'
+                  : 'No collaborators have FCM tokens registered!',
+            ),
+            backgroundColor:
+                notificationsSent > 0 ? Colors.green : Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error in _notifyAllCollaborators: $e'); // ✅ DEBUG
+
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send notifications: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // ✅ Convert Firestore value -> Color safely
@@ -127,18 +269,18 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
         return Scaffold(
           backgroundColor: _bg,
-
-          // ✅ AppBar with project color accent
           appBar: AppBar(
             backgroundColor: _bg,
             foregroundColor: Colors.white,
             elevation: 0,
+            centerTitle: false, // ✅ title a bit left
+            titleSpacing: 0, // ✅ closer to back button
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.pop(context),
             ),
+
             title: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   width: 10,
@@ -148,56 +290,92 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 10),
-                const Text(
-                  'Project Details',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                const SizedBox(width: 8),
+
+                // ✅ prevents overflow by shrinking text
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Project Details',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            centerTitle: true,
+
             actions: [
+              // ✅ Bell (owner only)
+              if (_authService.currentUserId == _project.ownerId)
+                IconButton(
+                  icon: const Icon(Icons.notifications_active, size: 22),
+                  onPressed: _notifyAllCollaborators,
+                  tooltip: 'Notify All Collaborators',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  visualDensity:
+                      const VisualDensity(horizontal: -2, vertical: -2),
+                ),
+
+              // ✅ Team icon (compact, close to bell)
               IconButton(
-                icon: const Icon(Icons.group),
+                icon: const Icon(Icons.group, size: 22),
                 onPressed: _showCollaboratorsDialog,
                 tooltip: 'Manage Collaborators',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                visualDensity:
+                    const VisualDensity(horizontal: -2, vertical: -2),
               ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    _showEditProjectDialog();
-                  } else if (value == 'delete') {
-                    _showDeleteProjectDialog();
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, size: 20),
-                        SizedBox(width: 12),
-                        Text('Edit Project'),
-                      ],
+
+              // ✅ Menu icon compact too
+              SizedBox(
+                width: 40,
+                child: PopupMenuButton<String>(
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.more_vert, size: 22),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _showEditProjectDialog();
+                    } else if (value == 'delete') {
+                      _showDeleteProjectDialog();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 20),
+                          SizedBox(width: 12),
+                          Text('Edit Project'),
+                        ],
+                      ),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 20, color: Colors.red),
-                        SizedBox(width: 12),
-                        Text('Delete Project',
-                            style: TextStyle(color: Colors.red)),
-                      ],
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 20, color: Colors.red),
+                          SizedBox(width: 12),
+                          Text('Delete Project',
+                              style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+
+              const SizedBox(width: 6), // tiny right padding
             ],
           ),
-
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
