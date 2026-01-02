@@ -167,6 +167,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       task: _currentTask,
       userId: _currentUserId,
       projectOwnerId: _projectOwnerId ?? '',
+      projectCollaboratorIds: _projectCollaboratorIds,
       taskCreatorId: _taskCreatorId,
     );
   }
@@ -178,6 +179,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       task: _currentTask,
       userId: _currentUserId,
       projectOwnerId: _projectOwnerId ?? '',
+      projectCollaboratorIds: _projectCollaboratorIds,
       taskCreatorId: _taskCreatorId,
     );
   }
@@ -190,6 +192,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       task: _currentTask,
       userId: _currentUserId,
       projectOwnerId: _projectOwnerId ?? '',
+      projectCollaboratorIds: _projectCollaboratorIds,
       taskCreatorId: _taskCreatorId,
     );
   }

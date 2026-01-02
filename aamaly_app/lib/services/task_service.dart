@@ -126,16 +126,63 @@ class TaskService {
 
   // ✅ GET MY TASKS (created by me OR assigned to me)
   // This is the recommended method for dashboard - clearer name than getAllUserTasks
-  Stream<List<Task>> getMyTasks(String userId) {
-    return _firestore.collection('tasks').snapshots().map((snapshot) {
+  Stream<List<Task>> getMyTasks(String userId) async* {
+    // Get user's projects first
+    final userProjectsSnapshot = await _firestore
+        .collection('projects')
+        .where('collaboratorIds', arrayContains: userId)
+        .get();
+
+    final userProjectIds =
+        userProjectsSnapshot.docs.map((doc) => doc.id).toList();
+
+    // Also get projects where user is owner
+    final ownedProjectsSnapshot = await _firestore
+        .collection('projects')
+        .where('ownerId', isEqualTo: userId)
+        .get();
+
+    userProjectIds.addAll(ownedProjectsSnapshot.docs.map((doc) => doc.id));
+
+    // Listen to tasks
+    yield* _firestore.collection('tasks').snapshots().map((snapshot) {
       final myTasks = snapshot.docs
           .where((doc) {
             final data = doc.data();
             final createdBy = data['createdBy'] as String?;
             final assignedTo = data['assignedToUserId'] as String?;
+            final projectId = data['projectId'] as String?;
 
-            // Show if user created it OR assigned to them
-            return createdBy == userId || assignedTo == userId;
+            // ✅ RULE 1: Show tasks ASSIGNED TO ME (regardless of who created it)
+            if (assignedTo != null &&
+                assignedTo.isNotEmpty &&
+                assignedTo == userId) {
+              return true;
+            }
+
+            // ✅ RULE 2: Show UNASSIGNED tasks in MY projects (available for anyone)
+            if ((assignedTo == null || assignedTo.isEmpty) &&
+                projectId != null &&
+                userProjectIds.contains(projectId)) {
+              return true;
+            }
+
+            // ❌ RULE 3: DON'T show tasks assigned to OTHER people
+            // (Even if I created them)
+            if (assignedTo != null &&
+                assignedTo.isNotEmpty &&
+                assignedTo != userId) {
+              return false;
+            }
+
+            // ✅ RULE 4: Show tasks I CREATED that are NOT assigned to anyone else
+            // (This covers unassigned tasks I created)
+            if (createdBy == userId &&
+                (assignedTo == null || assignedTo.isEmpty)) {
+              return true;
+            }
+
+            return false;
           })
           .map((doc) => _taskFromFirestore(doc))
           .toList();

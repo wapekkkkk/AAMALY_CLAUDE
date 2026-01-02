@@ -162,8 +162,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
       // Get the actual project ID
       String? actualProjectId;
+      String? actualProjectOwnerId; // ✅ ADD THIS
+
       if (widget.project != null) {
         actualProjectId = widget.project!.id;
+        actualProjectOwnerId = widget.project!.ownerId; // ✅ ADD THIS
       } else if (_selectedProjectName != null) {
         try {
           final selectedProject = _availableProjects.firstWhere(
@@ -172,9 +175,21 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 p.name == _selectedProjectName,
           );
           actualProjectId = selectedProject.id;
+          actualProjectOwnerId = selectedProject.ownerId; // ✅ ADD THIS
         } catch (_) {
           actualProjectId = null;
+          actualProjectOwnerId = null; // ✅ ADD THIS
         }
+      }
+
+      // ✅ NEW: Auto-assign logic
+      String? finalAssignedToUserId = _assignedToUserId;
+
+      // If user is NOT the project owner, auto-assign to themselves
+      if (actualProjectOwnerId != null &&
+          currentUserId != actualProjectOwnerId) {
+        finalAssignedToUserId = currentUserId;
+        print('🔄 Auto-assigning task to collaborator: $currentUserId');
       }
 
       final taskId = await _taskService.createTask(
@@ -186,7 +201,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         projectName: _selectedProjectName ?? 'No Project',
         createdBy: currentUserId,
         projectId: actualProjectId,
-        assignedToUserId: _assignedToUserId,
+        assignedToUserId: finalAssignedToUserId, // ✅ USE THIS INSTEAD
       );
 
       final createdTask = Task(
@@ -197,7 +212,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         status: _selectedStatus,
         priority: _selectedPriority,
         projectName: _selectedProjectName ?? 'No Project',
-        assignedToUserId: _assignedToUserId,
+        assignedToUserId: finalAssignedToUserId, // ✅ USE THIS INSTEAD
       );
 
       setState(() => _isLoading = false);
@@ -208,8 +223,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _assignedToUserId != null
-                  ? 'Task created and assigned successfully!'
+              finalAssignedToUserId != null
+                  ? (finalAssignedToUserId == currentUserId
+                      ? 'Task created and assigned to you!'
+                      : 'Task created and assigned successfully!')
                   : 'Task created successfully!',
             ),
             backgroundColor: Colors.green,
@@ -231,8 +248,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }
 
   bool _shouldShowAssignField() {
+    // ✅ NEW: Check if current user is the project owner
+    final currentUserId = _authService.currentUserId;
+
     if (widget.project != null) {
-      return widget.project!.hasCollaborators;
+      // Only show assignment dropdown if user is the owner
+      final isOwner = widget.project!.ownerId == currentUserId;
+      return widget.project!.hasCollaborators && isOwner; // ✅ CHANGED
     }
 
     if (_selectedProjectName != null) {
@@ -251,7 +273,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           collaboratorIds: [],
         ),
       );
-      return project.hasCollaborators;
+
+      // Only show assignment dropdown if user is the owner
+      final isOwner = project.ownerId == currentUserId;
+      return project.hasCollaborators && isOwner; // ✅ CHANGED
     }
 
     return false;

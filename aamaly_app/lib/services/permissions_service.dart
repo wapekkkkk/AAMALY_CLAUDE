@@ -12,60 +12,99 @@ class PermissionsService {
     required String userId,
     required String projectOwnerId,
     required List<String> projectCollaboratorIds,
+    String? taskCreatorId, // ✅ ADD THIS (optional)
   }) {
-    // Owner can mark any task as done
+    // ✅ NEW RULE: If task is UNASSIGNED, anyone can mark as done
+    if (task.assignedToUserId == null || task.assignedToUserId!.isEmpty) {
+      return userId == userId;
+    }
+
+    // For ASSIGNED tasks:
+
+    // 1. Owner can mark any task as done
     if (userId == projectOwnerId) return true;
 
-    // Task creator can mark as done
+    // 2. Task creator can mark as done (if tracked)
+    if (taskCreatorId != null && userId == taskCreatorId) return true;
+
+    // 3. Assigned user can mark as done
     if (task.assignedToUserId == userId) return true;
 
-    // Assigned user can mark as done
-    // (Note: If task has no assignedToUserId, only owner can mark done)
+    // 4. Other collaborators CANNOT mark assigned tasks as done
+    return false;
+  }
+
+  static bool canEditUnassignedTask({
+    required String userId,
+    required String projectOwnerId,
+    required List<String> projectCollaboratorIds,
+  }) {
+    // Owner can edit
+    if (userId == projectOwnerId) return true;
+
+    // Any collaborator can edit unassigned tasks
+    if (projectCollaboratorIds.contains(userId)) return true;
 
     return false;
   }
 
-  /// ✅ NEW: Check if user can edit task
+  /// ✅ UPDATE: Modified canEditTask to handle unassigned tasks
   static bool canEditTask({
     required Task task,
     required String userId,
     required String projectOwnerId,
-    String? taskCreatorId, // If you have this field
+    required List<String> projectCollaboratorIds, // ✅ ADD THIS PARAMETER
+    String? taskCreatorId,
   }) {
+    // ✅ NEW: If task is unassigned, anyone in project can edit
+    if (task.assignedToUserId == null || task.assignedToUserId!.isEmpty) {
+      return canEditUnassignedTask(
+        userId: userId,
+        projectOwnerId: projectOwnerId,
+        projectCollaboratorIds: projectCollaboratorIds,
+      );
+    }
+
     // 1. Owner can edit any task
     if (userId == projectOwnerId) return true;
 
-    // 2. Task creator can edit (if you track createdBy)
+    // 2. Task creator can edit
     if (taskCreatorId != null && userId == taskCreatorId) return true;
 
     // 3. Assigned user can edit
-    if (task.assignedToUserId != null && task.assignedToUserId == userId) {
-      return true;
-    }
+    if (task.assignedToUserId == userId) return true;
 
-    // 4. Other collaborators CANNOT edit
+    // 4. Other collaborators CANNOT edit assigned tasks
     return false;
   }
 
-  /// ✅ NEW: Check if user can delete task
+  /// ✅ UPDATE: Modified canDeleteTask to handle unassigned tasks
   static bool canDeleteTask({
     required Task task,
     required String userId,
     required String projectOwnerId,
-    String? taskCreatorId, // If you have this field
+    required List<String> projectCollaboratorIds, // ✅ ADD THIS PARAMETER
+    String? taskCreatorId,
   }) {
+    // ✅ NEW: If task is unassigned, anyone in project can delete
+    if (task.assignedToUserId == null || task.assignedToUserId!.isEmpty) {
+      return canEditUnassignedTask(
+        userId: userId,
+        projectOwnerId: projectOwnerId,
+        projectCollaboratorIds: projectCollaboratorIds,
+      );
+    }
+
     // 1. Owner can delete any task
     if (userId == projectOwnerId) return true;
 
-    // 2. Task creator can delete (if you track createdBy)
+    // 2. Task creator can delete
     if (taskCreatorId != null && userId == taskCreatorId) return true;
 
     // 3. Assigned user can delete
-    if (task.assignedToUserId != null && task.assignedToUserId == userId) {
-      return true;
-    }
+    if (task.assignedToUserId == userId) return true;
 
-    // 4. Other collaborators CANNOT delete
+    // 4. Other collaborators CANNOT delete assigned tasks
     return false;
   }
 

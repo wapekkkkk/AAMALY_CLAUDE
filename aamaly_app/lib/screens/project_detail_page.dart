@@ -592,213 +592,281 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
         statusLabel = 'To Do';
     }
 
-    final canMarkDone = PermissionsService.canMarkAsDone(
-      task: task,
-      userId: currentUserId,
-      projectOwnerId: _project.ownerId,
-      projectCollaboratorIds: _project.collaboratorIds,
-    );
+    return FutureBuilder<String?>(
+      future: _getTaskCreator(task.id),
+      builder: (context, creatorSnapshot) {
+        final taskCreatorId = creatorSnapshot.data;
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => TaskDetailPage(task: task)));
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: _project.color.withOpacity(0.14),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _project.color.withOpacity(0.25)),
-                  ),
-                  child: Icon(
-                    isCompleted
-                        ? Icons.check_circle
-                        : Icons.assignment_outlined,
-                    color: _project.color,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        task.title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          decoration: isCompleted
-                              ? TextDecoration.lineThrough
-                              : TextDecoration.none,
-                          color: isCompleted ? Colors.white38 : _text,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Due ${DateFormat('MMM d, yyyy').format(task.deadline)}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: daysUntil < 0 ? Colors.red[300] : _muted,
-                          fontWeight: daysUntil < 0
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.more_vert, color: Colors.white24),
-              ],
+        final canMarkDone = PermissionsService.canMarkAsDone(
+          task: task,
+          userId: currentUserId,
+          projectOwnerId: _project.ownerId,
+          projectCollaboratorIds: _project.collaboratorIds,
+          taskCreatorId: taskCreatorId,
+        );
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => TaskDetailPage(task: task)));
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _border),
             ),
-
-            const SizedBox(height: 12),
-
-            // Assignee display (theme + project color)
-            if (task.assignedToUserId != null)
-              FutureBuilder<app_user.User?>(
-                future: _getAssignedUser(task.assignedToUserId!),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.data == null)
-                    return const SizedBox.shrink();
-                  final assignee = snapshot.data!;
-                  final isAssignedToMe =
-                      assignee.id == (_authService.currentUserId);
-
-                  final accent =
-                      isAssignedToMe ? _project.color : Colors.white24;
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _surface2,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: isAssignedToMe
-                              ? _project.color.withOpacity(0.55)
-                              : _border),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _project.color.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: _project.color.withOpacity(0.25)),
+                      ),
+                      child: Icon(
+                        isCompleted
+                            ? Icons.check_circle
+                            : Icons.assignment_outlined,
+                        color: _project.color,
+                        size: 24,
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircleAvatar(
-                          radius: 12,
-                          backgroundColor:
-                              isAssignedToMe ? _project.color : Colors.white24,
-                          child: Text(
-                            assignee.initials,
-                            style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            task.title,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              decoration: isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : TextDecoration.none,
+                              color: isCompleted ? Colors.white38 : _text,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Due ${DateFormat('MMM d, yyyy').format(task.deadline)}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: daysUntil < 0 ? Colors.red[300] : _muted,
+                              fontWeight: daysUntil < 0
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.more_vert, color: Colors.white24),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Assignee display (theme + project color)
+                if (task.assignedToUserId != null)
+                  FutureBuilder<app_user.User?>(
+                    future: _getAssignedUser(task.assignedToUserId!),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData || snapshot.data == null)
+                        return const SizedBox.shrink();
+                      final assignee = snapshot.data!;
+                      final isAssignedToMe =
+                          assignee.id == (_authService.currentUserId);
+
+                      final accent =
+                          isAssignedToMe ? _project.color : Colors.white24;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _surface2,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: isAssignedToMe
+                                  ? _project.color.withOpacity(0.55)
+                                  : _border),
                         ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.person, size: 14, color: accent),
-                        const SizedBox(width: 4),
-                        Text(
-                          isAssignedToMe
-                              ? 'Assigned to You'
-                              : 'Assigned to ${assignee.name}',
-                          style: TextStyle(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundColor: isAssignedToMe
+                                  ? _project.color
+                                  : Colors.white24,
+                              child: Text(
+                                assignee.initials,
+                                style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(Icons.person, size: 14, color: accent),
+                            const SizedBox(width: 4),
+                            Text(
+                              isAssignedToMe
+                                  ? 'Assigned to You'
+                                  : 'Assigned to ${assignee.name}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isAssignedToMe ? _project.color : _muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(10),
+                        border:
+                            Border.all(color: statusColor.withOpacity(0.30)),
+                      ),
+                      child: Text(
+                        statusLabel,
+                        style: TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isAssignedToMe ? _project.color : _muted,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildPriorityBadge(task.priority),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // ✅ NEW: Show badge based on assignment status
+                    if (task.assignedToUserId != null &&
+                        task.assignedToUserId!.isNotEmpty) ...[
+                      // Task is assigned to someone
+                      if (!canMarkDone)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: Colors.orange.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.visibility,
+                                  size: 14, color: Colors.orange),
+                              SizedBox(width: 6),
+                              Text(
+                                'View only',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-
-            Row(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.14),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: statusColor.withOpacity(0.30)),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: statusColor),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _buildPriorityBadge(task.priority),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (!canMarkDone)
-                  Row(
-                    children: const [
-                      Icon(Icons.lock_outline, size: 14, color: Colors.white30),
-                      SizedBox(width: 4),
-                      Text('View only',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: _muted,
-                              fontStyle: FontStyle.italic)),
+                    ] else ...[
+                      // ✅ Task is UNASSIGNED - show "Available for all"
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              Border.all(color: Colors.blue.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.people, size: 14, color: Colors.blue),
+                            SizedBox(width: 6),
+                            Text(
+                              'Available for all',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
-                const Spacer(),
-                OutlinedButton(
-                  onPressed:
-                      canMarkDone ? () => _toggleTaskCompletion(task) : null,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isCompleted ? Colors.orange : Colors.green,
-                    side: BorderSide(
-                        color: isCompleted ? Colors.orange : Colors.green),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    disabledForegroundColor: Colors.white24,
-                  ),
-                  child: Text(
-                    isCompleted ? 'Mark as In Progress' : 'Mark as Done',
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
+
+                    const Spacer(),
+
+                    // ✅ Button - only enabled if canMarkDone is true
+                    OutlinedButton(
+                      onPressed: canMarkDone
+                          ? () => _toggleTaskCompletion(task)
+                          : null,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor:
+                            isCompleted ? Colors.orange : Colors.green,
+                        side: BorderSide(
+                          color: isCompleted ? Colors.orange : Colors.green,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        disabledForegroundColor: Colors.white24,
+                        disabledBackgroundColor: Colors.transparent,
+                      ),
+                      child: Text(
+                        isCompleted ? 'Mark as In Progress' : 'Mark as Done',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
+          ),
+        );
+      },
+    ); // ✅ Closing FutureBuilder
+  } // ✅ Closing _buildTaskCard method
 
   Future<void> _toggleTaskCompletion(Task task) async {
     final currentUserId = _authService.currentUserId ?? '';
@@ -1129,6 +1197,15 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
       // ignore
     }
     return null;
+  }
+
+  Future<String?> _getTaskCreator(String taskId) async {
+    try {
+      final doc = await _firestore.collection('tasks').doc(taskId).get();
+      return doc.data()?['createdBy'] as String?;
+    } catch (e) {
+      return null;
+    }
   }
 }
 
