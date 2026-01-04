@@ -10,6 +10,7 @@ import '../../services/firebase_auth_service.dart';
 import '../../services/project_service.dart';
 import '../../services/task_service.dart';
 import '../../services/friend_service.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class FriendProfilePage extends StatefulWidget {
   final User friend;
@@ -222,7 +223,10 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                           color: _accent,
                         ),
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(delay: 200.ms)
+                        .scale(begin: const Offset(0.5, 0.5), delay: 200.ms),
 
                     const SizedBox(height: 14),
 
@@ -233,7 +237,10 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(delay: 300.ms)
+                        .slideY(begin: 0.1, delay: 300.ms),
 
                     const SizedBox(height: 4),
 
@@ -244,7 +251,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                       ),
-                    ),
+                    ).animate().fadeIn(delay: 350.ms),
 
                     const SizedBox(height: 16),
 
@@ -273,12 +280,15 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                           ),
                         ],
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(delay: 400.ms)
+                        .scale(begin: const Offset(0.8, 0.8), delay: 400.ms),
 
                     const SizedBox(height: 26),
                   ],
                 ),
-              ),
+              ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.2),
             ),
 
             // ✅ STATS ROW (dark cards)
@@ -316,7 +326,10 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                             ),
                           ),
                         ],
-                      ),
+                      )
+                        .animate()
+                        .fadeIn(delay: 500.ms)
+                        .slideY(begin: 0.1, delay: 500.ms),
               ),
             ),
 
@@ -350,7 +363,10 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                       ),
                     ],
                   ),
-                ),
+                )
+                    .animate()
+                    .fadeIn(delay: 600.ms)
+                    .slideX(begin: 0.1, delay: 600.ms),
               ),
             ),
 
@@ -379,7 +395,10 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                       ),
                     ],
                   ),
-                ),
+                )
+                    .animate()
+                    .fadeIn(delay: 700.ms)
+                    .slideX(begin: 0.1, delay: 700.ms),
               ),
             ),
 

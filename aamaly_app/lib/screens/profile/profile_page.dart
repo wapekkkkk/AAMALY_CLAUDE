@@ -10,8 +10,9 @@ import '../../services/task_service.dart';
 import '../../services/friend_service.dart';
 import '../auth/login_page.dart';
 import 'edit_profile_page.dart';
-import 'my_statistics_page.dart'; // ✅ NEW
-import 'task_history_page.dart'; // ✅ NEW
+import 'my_statistics_page.dart';
+import 'task_history_page.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -141,7 +142,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: Color(0xFF7C4DFF),
                         ),
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(delay: 200.ms)
+                        .scale(begin: const Offset(0.5, 0.5), delay: 200.ms),
 
                     const SizedBox(height: 16),
 
@@ -153,7 +157,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(delay: 300.ms)
+                        .slideY(begin: 0.1, delay: 300.ms),
 
                     const SizedBox(height: 4),
 
@@ -164,7 +171,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 14,
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(delay: 300.ms)
+                        .slideY(begin: 0.1, delay: 350.ms),
 
                     const SizedBox(height: 20),
 
@@ -194,12 +204,15 @@ class _ProfilePageState extends State<ProfilePage> {
                           vertical: 12,
                         ),
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(delay: 400.ms)
+                        .scale(begin: const Offset(0.8, 0.8), delay: 400.ms),
 
                     const SizedBox(height: 30),
                   ],
                 ),
-              ),
+              ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.2),
             ),
 
             // ✅ 2. STATS ROW
@@ -237,7 +250,10 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                         ],
-                      ),
+                      )
+                        .animate()
+                        .fadeIn(delay: 500.ms)
+                        .slideY(begin: 0.1, delay: 500.ms),
               ),
             ),
 
@@ -293,7 +309,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     ),
                   ],
-                ),
+                )
+                    .animate()
+                    .fadeIn(delay: 600.ms)
+                    .slideY(begin: 0.1, delay: 600.ms),
               ),
             ),
 
@@ -347,7 +366,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     ),
                   ],
-                ),
+                )
+                    .animate()
+                    .fadeIn(delay: 700.ms)
+                    .slideY(begin: 0.1, delay: 700.ms),
               ),
             ),
 
@@ -401,7 +423,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     ),
                   ],
-                ),
+                )
+                    .animate()
+                    .fadeIn(delay: 800.ms)
+                    .slideY(begin: 0.1, delay: 800.ms),
               ),
             ),
 
@@ -425,7 +450,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     elevation: 0,
                   ),
                 ),
-              ),
+              )
+                  .animate()
+                  .fadeIn(delay: 900.ms)
+                  .shake(delay: 1200.ms, duration: 300.ms),
             ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 40)),

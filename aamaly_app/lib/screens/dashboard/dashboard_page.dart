@@ -26,6 +26,7 @@ import '../fcm_test_page.dart'; // ✅ ADD THIS
 import '../../services/push_notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/page_transitions.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -243,7 +244,14 @@ class _DashboardPageState extends State<DashboardPage> {
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
-                                  ),
+                                  )
+                                      .animate(
+                                          onPlay: (controller) =>
+                                              controller.repeat())
+                                      .shimmer(
+                                          delay: 1000.ms,
+                                          duration: 2000.ms) // ✅ Subtle shimmer
+                                      .shake(delay: 2000.ms, duration: 300.ms),
                                 ),
                             ],
                           );
@@ -268,7 +276,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ],
               ),
-            ),
+            ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
 
             // ✅ FILTER TABS
             StreamBuilder<List<Task>>(
@@ -293,7 +301,10 @@ class _DashboardPageState extends State<DashboardPage> {
                       _buildFilterTab('Completed', completedCount, 'completed'),
                     ],
                   ),
-                );
+                )
+                    .animate()
+                    .fadeIn(delay: 150.ms, duration: 300.ms)
+                    .slideY(begin: -0.05);
               },
             ),
 
@@ -359,7 +370,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ],
                               ),
                             ),
-                          );
+                          )
+                              .animate()
+                              .fadeIn(delay: 200.ms)
+                              .scale(begin: const Offset(0.9, 0.9));
                         }
 
                         return SizedBox(
@@ -370,7 +384,12 @@ class _DashboardPageState extends State<DashboardPage> {
                             physics: const BouncingScrollPhysics(),
                             itemCount: projects.length,
                             itemBuilder: (context, index) {
-                              return _buildProjectCard(projects[index], index);
+                              return _buildProjectCard(projects[index], index)
+                                  .animate()
+                                  .fadeIn(
+                                      delay: (100 * index).ms,
+                                      duration: 300.ms) // ✅ ADD
+                                  .slideX(begin: 0.2, delay: (100 * index).ms);
                             },
                           ),
                         );
@@ -408,7 +427,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ],
                       ),
-                    ),
+                    ).animate().fadeIn(delay: 250.ms).slideX(begin: 0.1),
 
                     // ✅ TASK LIST
                     StreamBuilder<List<Project>>(
@@ -496,7 +515,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                     ],
                                   ),
                                 ),
-                              );
+                              )
+                                  .animate()
+                                  .fadeIn(delay: 300.ms)
+                                  .scale(begin: const Offset(0.9, 0.9));
                             }
 
                             final displayTasks = tasks.take(5).toList();
@@ -509,7 +531,13 @@ class _DashboardPageState extends State<DashboardPage> {
                               itemCount: displayTasks.length,
                               itemBuilder: (context, index) {
                                 return _buildTaskCard(
-                                    displayTasks[index], projects);
+                                        displayTasks[index], projects)
+                                    .animate()
+                                    .fadeIn(
+                                        delay: (50 * index).ms,
+                                        duration: 300.ms) // ✅ ADD
+                                    .slideX(
+                                        begin: 0.15, delay: (50 * index).ms);
                               },
                             );
                           },
