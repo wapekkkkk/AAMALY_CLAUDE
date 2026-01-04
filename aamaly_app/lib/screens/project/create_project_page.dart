@@ -4,10 +4,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/project_service.dart';
-import '../services/firebase_auth_service.dart';
-import '../services/friend_service.dart';
-import '../models/user.dart' as app_user;
+import '../../services/project_service.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../services/friend_service.dart';
+import '../../models/user.dart' as app_user;
 
 class CreateProjectPage extends StatefulWidget {
   const CreateProjectPage({Key? key}) : super(key: key);

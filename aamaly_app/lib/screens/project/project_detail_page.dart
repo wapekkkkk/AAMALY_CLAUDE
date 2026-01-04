@@ -5,18 +5,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/push_notification_service.dart';
-import '../models/project.dart';
-import '../models/task.dart';
-import '../services/friend_service.dart';
-import '../services/firebase_auth_service.dart';
-import '../services/permissions_service.dart';
-import '../models/user.dart' as app_user;
-import '../services/task_service.dart';
-import '../services/project_service.dart';
-import '../widgets/edit_project_bottom_sheet.dart';
-import 'task_detail_page.dart';
-import 'create_task_page.dart';
+import '../../services/push_notification_service.dart';
+import '../../models/project.dart';
+import '../../models/task.dart';
+import '../../services/friend_service.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../services/permissions_service.dart';
+import '../../models/user.dart' as app_user;
+import '../../services/task_service.dart';
+import '../../services/project_service.dart';
+import '../../widgets/edit_project_bottom_sheet.dart';
+import '../task/task_detail_page.dart';
+import '../task/create_task_page.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class ProjectDetailPage extends StatefulWidget {
   final Project project;
@@ -466,7 +467,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                     ),
                   ],
                 ),
-              ),
+              ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
 
               // Tasks header
               Padding(
@@ -553,14 +554,19 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-                      itemCount: tasks.length,
-                      itemBuilder: (context, index) =>
-                          _buildTaskCard(tasks[index]),
-                    );
+                        padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+                        itemCount: tasks.length,
+                        itemBuilder: (context, index) {
+                          return _buildTaskCard(tasks[index])
+                              .animate()
+                              .fadeIn(
+                                  delay:
+                                      (50 * index).ms) // ✅ Staggered animation
+                              .slideX(begin: 0.2, delay: (50 * index).ms);
+                        });
                   },
                 ),
-              ),
+              ).animate().fadeIn(delay: 150.ms),
             ],
           ),
         );

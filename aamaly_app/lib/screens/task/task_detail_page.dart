@@ -7,16 +7,17 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
-import '../services/permissions_service.dart';
-import '../models/task.dart';
-import '../utils/task_helper.dart';
-import '../widgets/edit_task_bottom_sheet.dart';
-import '../models/file_attachment.dart';
-import '../services/task_service.dart';
-import '../services/file_service.dart';
-import '../services/firebase_auth_service.dart';
-import '../utils/logger.dart';
-import '../utils/error_handler.dart';
+import '../../services/permissions_service.dart';
+import '../../models/task.dart';
+import '../../utils/task_helper.dart';
+import '../../widgets/edit_task_bottom_sheet.dart';
+import '../../models/file_attachment.dart';
+import '../../services/task_service.dart';
+import '../../services/file_service.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../utils/logger.dart';
+import '../../utils/error_handler.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class TaskDetailPage extends StatefulWidget {
   final Task task;
@@ -432,7 +433,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 ),
               ],
             ),
-          ),
+          ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
           if (_projectId != null && !_loadingProject)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -652,7 +653,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                   ],
                 ),
               ),
-            ),
+            ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),
           ),
         ],
       ),

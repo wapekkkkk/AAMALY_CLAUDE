@@ -4,7 +4,7 @@
 // ============================================
 
 import 'package:flutter/material.dart';
-import 'login_page.dart';
+import 'auth/login_page.dart';
 
 class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key});

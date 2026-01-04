@@ -5,10 +5,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../services/friend_service.dart';
-import '../services/firebase_auth_service.dart';
+import '../../services/friend_service.dart';
+import '../../services/firebase_auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/user.dart' as app_user;
+import '../../models/user.dart' as app_user;
 
 class QRScannerPage extends StatefulWidget {
   const QRScannerPage({Key? key}) : super(key: key);

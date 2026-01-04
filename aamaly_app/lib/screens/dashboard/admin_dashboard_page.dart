@@ -5,10 +5,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/user.dart' as app_user;
-import '../services/firebase_auth_service.dart';
+import '../../models/user.dart' as app_user;
+import '../../services/firebase_auth_service.dart';
 import 'package:intl/intl.dart';
-import 'login_page.dart'; // ✅ ADD THIS
+import '../auth/login_page.dart'; // ✅ ADD THIS
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({Key? key}) : super(key: key);

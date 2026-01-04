@@ -4,12 +4,12 @@
 // ============================================
 
 import 'package:flutter/material.dart';
-import '../models/user.dart';
-import '../models/task.dart';
-import '../services/firebase_auth_service.dart';
-import '../services/project_service.dart';
-import '../services/task_service.dart';
-import '../services/friend_service.dart';
+import '../../models/user.dart';
+import '../../models/task.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../services/project_service.dart';
+import '../../services/task_service.dart';
+import '../../services/friend_service.dart';
 
 class FriendProfilePage extends StatefulWidget {
   final User friend;

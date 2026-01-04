@@ -3,12 +3,12 @@
 // ============================================
 
 import 'package:flutter/material.dart';
-import '../models/task.dart';
-import '../utils/task_helper.dart';
-import 'task_detail_page.dart';
-import '../services/task_service.dart';
-import '../services/firebase_auth_service.dart';
-import '../utils/logger.dart';
+import '../../models/task.dart';
+import '../../utils/task_helper.dart';
+import '../task/task_detail_page.dart';
+import '../../services/task_service.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../utils/logger.dart';
 import 'package:intl/intl.dart';
 
 class SearchPage extends StatefulWidget {

@@ -3,10 +3,10 @@
 // ============================================
 
 import 'package:flutter/material.dart';
-import '../models/user.dart';
-import '../models/friend_request.dart';
-import '../data/mock_users.dart';
-import '../data/mock_friend_requests.dart';
+import '../../models/user.dart';
+import '../../models/friend_request.dart';
+import '../../data/mock_users.dart';
+import '../../data/mock_friend_requests.dart';
 
 class CollaboratorsPage extends StatefulWidget {
   const CollaboratorsPage({Key? key}) : super(key: key);

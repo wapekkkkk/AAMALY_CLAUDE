@@ -4,15 +4,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/task.dart';
-import '../models/reminder.dart';
-import 'task_detail_page.dart';
+import '../../models/task.dart';
+import '../../models/reminder.dart';
+import '../task/task_detail_page.dart';
 import 'create_reminder_page.dart';
-import '../services/task_service.dart';
-import '../services/reminder_service.dart';
-import '../services/firebase_auth_service.dart';
-import '../utils/logger.dart';
-import '../utils/error_handler.dart';
+import '../../services/task_service.dart';
+import '../../services/reminder_service.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../utils/logger.dart';
+import '../../utils/error_handler.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({Key? key}) : super(key: key);
@@ -227,7 +228,7 @@ class _CalendarPageState extends State<CalendarPage> {
                       ),
                     ],
                   ),
-                ),
+                ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
 
                 // ✅ Week Calendar with arrows (dark surface)
                 Container(
@@ -258,7 +259,10 @@ class _CalendarPageState extends State<CalendarPage> {
                       ),
                     ],
                   ),
-                ),
+                )
+                    .animate()
+                    .fadeIn(delay: 150.ms, duration: 300.ms)
+                    .slideY(begin: -0.05),
 
                 const SizedBox(height: 8),
 
@@ -467,6 +471,9 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
               ),
             )
+                .animate()
+                .fadeIn(delay: 200.ms)
+                .scale(begin: const Offset(0.9, 0.9))
           else
             ListView.builder(
               shrinkWrap: true,
@@ -474,7 +481,11 @@ class _CalendarPageState extends State<CalendarPage> {
               itemCount: tasksForSelectedDate.length,
               itemBuilder: (context, index) {
                 final task = tasksForSelectedDate[index];
-                return _buildTaskCard(task);
+                return _buildTaskCard(task)
+                    .animate()
+                    .fadeIn(
+                        delay: (50 * index).ms, duration: 300.ms) // ✅ Staggered
+                    .slideX(begin: 0.15, delay: (50 * index).ms);
               },
             ),
         ],
@@ -591,7 +602,10 @@ class _CalendarPageState extends State<CalendarPage> {
                 itemCount: reminders.length,
                 itemBuilder: (context, index) {
                   final reminder = reminders[index];
-                  return _buildReminderCard(reminder);
+                  return _buildReminderCard(reminder)
+                      .animate()
+                      .fadeIn(delay: (50 * index).ms, duration: 300.ms)
+                      .slideX(begin: 0.15, delay: (50 * index).ms);
                 },
               );
             },

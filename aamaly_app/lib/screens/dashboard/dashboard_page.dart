@@ -6,25 +6,26 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import '../models/task.dart';
-import '../models/project.dart';
-import '../services/firebase_auth_service.dart';
-import '../services/project_service.dart';
-import '../services/task_service.dart';
-import 'task_detail_page.dart';
-import 'create_task_page.dart';
-import 'project_detail_page.dart';
-import 'calendar_page.dart';
-import 'create_project_page.dart';
-import 'search_page.dart';
-import 'friends_page.dart';
-import 'profile_page.dart';
-import 'notifications_page.dart';
-import '../services/notification_service.dart';
-import '../services/push_notification_service.dart';
-import '../screens/fcm_test_page.dart'; // ✅ ADD THIS
-import '../services/push_notification_service.dart';
+import '../../models/task.dart';
+import '../../models/project.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../services/project_service.dart';
+import '../../services/task_service.dart';
+import '../task/task_detail_page.dart';
+import '../task/create_task_page.dart';
+import '../project/project_detail_page.dart';
+import '../calendar/calendar_page.dart';
+import '../project/create_project_page.dart';
+import '../search/search_page.dart';
+import '../friends/friends_page.dart';
+import '../profile/profile_page.dart';
+import '../notifications/notifications_page.dart';
+import '../../services/notification_service.dart';
+import '../../services/push_notification_service.dart';
+import '../fcm_test_page.dart'; // ✅ ADD THIS
+import '../../services/push_notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../utils/page_transitions.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -80,26 +81,35 @@ class _DashboardPageState extends State<DashboardPage> {
 
     switch (index) {
       case 0:
+        // Home - already here, do nothing
         break;
+
       case 1:
+        // Calendar - Slide from right
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const CalendarPage()),
+          PageTransitions.slideRight(const CalendarPage()),
         );
         break;
+
       case 2:
+        // Add (center button) - Slide from bottom
         _showAddNewDialog();
         break;
+
       case 3:
+        // Friends - Slide from right
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const FriendsPage()),
+          PageTransitions.slideRight(const FriendsPage()),
         );
         break;
+
       case 4:
+        // Search - Fade transition
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const SearchPage()),
+          PageTransitions.fade(const SearchPage()),
         );
         break;
     }
@@ -119,11 +129,11 @@ class _DashboardPageState extends State<DashboardPage> {
               leading: const Icon(Icons.task_alt, color: kPrimary),
               title: const Text('New Task', style: TextStyle(color: kText)),
               onTap: () async {
-                Navigator.pop(context);
+                Navigator.pop(context); // Close dialog first
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const CreateTaskPage()),
+                  PageTransitions.slideUp(
+                      const CreateTaskPage()), // ✅ Smooth slide up!
                 );
               },
             ),
@@ -131,11 +141,11 @@ class _DashboardPageState extends State<DashboardPage> {
               leading: const Icon(Icons.folder, color: kPrimary),
               title: const Text('New Project', style: TextStyle(color: kText)),
               onTap: () async {
-                Navigator.pop(context);
+                Navigator.pop(context); // Close dialog first
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const CreateProjectPage()),
+                  PageTransitions.slideUp(
+                      const CreateProjectPage()), // ✅ Smooth slide up!
                 );
               },
             ),

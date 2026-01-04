@@ -4,9 +4,9 @@
 // ============================================
 
 import 'package:flutter/material.dart';
-import '../models/task.dart';
-import '../services/firebase_auth_service.dart';
-import '../services/task_service.dart';
+import '../../models/task.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../services/task_service.dart';
 
 class MyStatisticsPage extends StatefulWidget {
   const MyStatisticsPage({Key? key}) : super(key: key);

@@ -3,10 +3,10 @@
 // ============================================
 
 import 'package:flutter/material.dart';
-import '../services/firebase_auth_service.dart';
-import 'dashboard_page.dart';
-import '../services/admin_service.dart';
-import 'admin_dashboard_page.dart';
+import '../../services/firebase_auth_service.dart';
+import '../dashboard/dashboard_page.dart';
+import '../../services/admin_service.dart';
+import '../dashboard/admin_dashboard_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});

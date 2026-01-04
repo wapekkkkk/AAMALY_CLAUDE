@@ -9,7 +9,7 @@ import 'screens/loading_page.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/push_notification_service.dart';
-import '../screens/dashboard_page.dart'; // ✅ ADD THIS
+import 'screens/dashboard/dashboard_page.dart'; // ✅ ADD THIS
 
 void main() async {
   // Ensure Flutter is initialized
@@ -38,6 +38,12 @@ class AamalyApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Poppins',
         scaffoldBackgroundColor: const Color(0xFF0E141B),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android:
+                CupertinoPageTransitionsBuilder(), // iOS-like
+          },
+        ),
       ),
       home: const LoadingScreen(),
     );

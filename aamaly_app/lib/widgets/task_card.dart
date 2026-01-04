@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../utils/task_helper.dart';
-import '../screens/task_detail_page.dart';
+import '../screens/task/task_detail_page.dart';
 
 class TaskCard extends StatelessWidget {
   final Task task;

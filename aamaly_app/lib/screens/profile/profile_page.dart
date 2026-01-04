@@ -4,11 +4,11 @@
 // ============================================
 
 import 'package:flutter/material.dart';
-import '../services/firebase_auth_service.dart';
-import '../services/project_service.dart';
-import '../services/task_service.dart';
-import '../services/friend_service.dart';
-import 'login_page.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../services/project_service.dart';
+import '../../services/task_service.dart';
+import '../../services/friend_service.dart';
+import '../auth/login_page.dart';
 import 'edit_profile_page.dart';
 import 'my_statistics_page.dart'; // ✅ NEW
 import 'task_history_page.dart'; // ✅ NEW

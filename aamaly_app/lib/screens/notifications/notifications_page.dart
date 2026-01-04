@@ -4,9 +4,9 @@
 // ============================================
 
 import 'package:flutter/material.dart';
-import '../models/notification.dart';
-import '../services/notification_service.dart';
-import '../services/firebase_auth_service.dart';
+import '../../models/notification.dart';
+import '../../services/notification_service.dart';
+import '../../services/firebase_auth_service.dart';
 import 'dart:async';
 
 class NotificationsPage extends StatefulWidget {

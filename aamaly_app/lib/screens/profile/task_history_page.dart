@@ -5,10 +5,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/task.dart';
-import '../services/firebase_auth_service.dart';
-import '../services/task_service.dart';
-import 'task_detail_page.dart';
+import '../../models/task.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../services/task_service.dart';
+import '../task/task_detail_page.dart';
 
 class TaskHistoryPage extends StatefulWidget {
   const TaskHistoryPage({Key? key}) : super(key: key);

@@ -4,15 +4,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/friend_request.dart';
-import '../models/user.dart' as app_user;
-import '../services/friend_service.dart';
-import '../services/firebase_auth_service.dart';
-import '../utils/logger.dart';
-import '../utils/error_handler.dart';
+import '../../models/friend_request.dart';
+import '../../models/user.dart' as app_user;
+import '../../services/friend_service.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../utils/logger.dart';
+import '../../utils/error_handler.dart';
 import 'friend_profile_page.dart';
-import '../widgets/qr_code_display.dart';
+import '../../widgets/qr_code_display.dart';
 import 'qr_scanner_page.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({Key? key}) : super(key: key);
@@ -367,67 +368,66 @@ class _FriendsPageState extends State<FriendsPage>
     return Scaffold(
       backgroundColor: kBg,
       appBar: AppBar(
-        backgroundColor: kAppBarBg,
-        elevation: 0,
-        title: const Text(
-          'Friends',
-          style: TextStyle(
-            color: kText,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+          backgroundColor: kAppBarBg,
+          elevation: 0,
+          title: const Text(
+            'Friends',
+            style: TextStyle(
+              color: kText,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add, color: kPrimary),
-            onPressed: _showAddFriendOptions,
-            tooltip: 'Add Friend',
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: kPrimary,
-          labelColor: kPrimary,
-          unselectedLabelColor: kMuted,
-          tabs: [
-            const Tab(text: 'My Friends'),
-            const Tab(text: 'Find Friends'),
-            Tab(
-              child: StreamBuilder<List<FriendRequest>>(
-                stream: _friendService.getIncomingRequests(currentUserId),
-                builder: (context, snapshot) {
-                  final requestCount = snapshot.data?.length ?? 0;
-
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Requests'),
-                      if (requestCount > 0) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            '$requestCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-                },
-              ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.person_add, color: kPrimary),
+              onPressed: _showAddFriendOptions,
+              tooltip: 'Add Friend',
             ),
           ],
-        ),
-      ),
+          bottom: TabBar(
+            controller: _tabController,
+            indicatorColor: kPrimary,
+            labelColor: kPrimary,
+            unselectedLabelColor: kMuted,
+            tabs: [
+              const Tab(text: 'My Friends'),
+              const Tab(text: 'Find Friends'),
+              Tab(
+                child: StreamBuilder<List<FriendRequest>>(
+                  stream: _friendService.getIncomingRequests(currentUserId),
+                  builder: (context, snapshot) {
+                    final requestCount = snapshot.data?.length ?? 0;
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Requests'),
+                        if (requestCount > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '$requestCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          )),
       body: TabBarView(
         controller: _tabController,
         children: [
@@ -521,12 +521,20 @@ class _FriendsPageState extends State<FriendsPage>
                     ],
                   ),
                 )
+                  .animate()
+                  .fadeIn(delay: 200.ms)
+                  .scale(begin: const Offset(0.8, 0.8))
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: _filteredFriends.length,
                   itemBuilder: (context, index) {
                     final friend = _filteredFriends[index];
-                    return _buildFriendCard(friend);
+                    return _buildFriendCard(friend)
+                        .animate()
+                        .fadeIn(
+                            delay: (50 * index).ms,
+                            duration: 300.ms) // ✅ Staggered
+                        .slideX(begin: 0.2, delay: (50 * index).ms);
                   },
                 ),
         ),
@@ -673,14 +681,13 @@ class _FriendsPageState extends State<FriendsPage>
             'Choose how you want to add a friend',
             style: TextStyle(fontSize: 14, color: kMuted),
           ),
-          const SizedBox(height: 24),
           _buildAddMethodCard(
             icon: Icons.email,
             iconColor: kPrimary,
             title: 'Search by Email',
             description: 'Find and add friends by email address',
             onTap: () => _showSearchByEmailDialog(currentUserId),
-          ),
+          ).animate().fadeIn(delay: 200.ms).slideX(begin: 0.1),
           const SizedBox(height: 16),
           _buildAddMethodCard(
             icon: Icons.qr_code_scanner,
@@ -688,7 +695,7 @@ class _FriendsPageState extends State<FriendsPage>
             title: 'Scan QR Code',
             description: 'Scan your friend\'s QR code to connect instantly',
             onTap: _showQRScanner,
-          ),
+          ).animate().fadeIn(delay: 300.ms).slideX(begin: 0.1),
           const SizedBox(height: 32),
           Row(
             children: [
@@ -1012,9 +1019,14 @@ class _FriendsPageState extends State<FriendsPage>
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            ...receivedRequests.map(
-                (request) => _buildReceivedRequestCard(request, currentUserId)),
+            ...receivedRequests.asMap().entries.map((entry) {
+              final index = entry.key;
+              final request = entry.value;
+              return _buildReceivedRequestCard(request, currentUserId)
+                  .animate()
+                  .fadeIn(delay: (50 * index).ms, duration: 300.ms)
+                  .slideX(begin: -0.2, delay: (50 * index).ms);
+            }),
           ],
         );
       },
