@@ -685,8 +685,10 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
                 const SizedBox(height: 12),
 
-                // Assignee display (theme + project color)
-                if (task.assignedToUserId != null)
+                // ✅ UPDATED: Assignee display OR "Available for all" badge
+                if (task.assignedToUserId != null &&
+                    task.assignedToUserId!.isNotEmpty)
+                  // Task is ASSIGNED - show assignee info
                   FutureBuilder<app_user.User?>(
                     future: _getAssignedUser(task.assignedToUserId!),
                     builder: (context, snapshot) {
@@ -744,6 +746,43 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                         ),
                       );
                     },
+                  )
+                else
+                  // ✅ Task is UNASSIGNED - show "Available for all" badge
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _surface2,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blue.withOpacity(0.55)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        CircleAvatar(
+                          radius: 12,
+                          backgroundColor: Colors.blue,
+                          child: Icon(
+                            Icons.people,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(Icons.group, size: 14, color: Colors.blue),
+                        SizedBox(width: 4),
+                        Text(
+                          'Available for all',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                 Row(
@@ -772,68 +811,29 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
                 const SizedBox(height: 12),
 
+                // ✅ UPDATED: Button row (no more badge here)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // ✅ NEW: Show badge based on assignment status
+                    // ✅ Show "View only" indicator for assigned tasks user can't edit
                     if (task.assignedToUserId != null &&
-                        task.assignedToUserId!.isNotEmpty) ...[
-                      // Task is assigned to someone
-                      if (!canMarkDone)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: Colors.orange.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.visibility,
-                                  size: 14, color: Colors.orange),
-                              SizedBox(width: 6),
-                              Text(
-                                'View only',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ] else ...[
-                      // ✅ Task is UNASSIGNED - show "Available for all"
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(8),
-                          border:
-                              Border.all(color: Colors.blue.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.people, size: 14, color: Colors.blue),
-                            SizedBox(width: 6),
-                            Text(
-                              'Available for all',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        task.assignedToUserId!.isNotEmpty &&
+                        !canMarkDone)
+                      Row(
+                        children: const [
+                          Icon(Icons.lock_outline,
+                              size: 14, color: Colors.white30),
+                          SizedBox(width: 4),
+                          Text(
+                            'View only',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _muted,
+                              fontStyle: FontStyle.italic,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
 
                     const Spacer(),
 
@@ -871,7 +871,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
           ),
         );
       },
-    ); // ✅ Closing FutureBuilder
+    );
   } // ✅ Closing _buildTaskCard method
 
   Future<void> _toggleTaskCompletion(Task task) async {

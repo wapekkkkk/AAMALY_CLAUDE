@@ -10,6 +10,7 @@ import '../../services/task_service.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../utils/logger.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -389,7 +390,7 @@ class _SearchPageState extends State<SearchPage> {
               ),
               onChanged: _performSearch,
             ),
-          ),
+          ).animate().fadeIn(delay: 300.ms).slideX(begin: 0.1, delay: 300.ms),
 
           // ✅ Active Filters Display
           if (_filterStatus != null || _filterPriority != null)
@@ -506,38 +507,40 @@ class _SearchPageState extends State<SearchPage> {
                       child: filteredTasks.isEmpty
                           ? Center(
                               child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    _searchQuery.isEmpty
-                                        ? Icons.search_off
-                                        : Icons.inbox_outlined,
-                                    size: 64,
-                                    color: Colors.grey[600],
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _searchQuery.isEmpty
+                                      ? Icons.search_off
+                                      : Icons.inbox_outlined,
+                                  size: 64,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _searchQuery.isEmpty
+                                      ? 'Start typing to search tasks'
+                                      : 'No tasks found',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: kMuted,
                                   ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    _searchQuery.isEmpty
-                                        ? 'Start typing to search tasks'
-                                        : 'No tasks found',
-                                    style: const TextStyle(
-                                      fontSize: 16,
+                                ),
+                                if (_searchQuery.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Try different keywords or filters',
+                                    style: TextStyle(
+                                      fontSize: 14,
                                       color: kMuted,
                                     ),
                                   ),
-                                  if (_searchQuery.isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Try different keywords or filters',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: kMuted,
-                                      ),
-                                    ),
-                                  ],
                                 ],
-                              ),
+                              ],
                             )
+                                  .animate()
+                                  .fadeIn(delay: 400.ms)
+                                  .slideX(begin: 0.1, delay: 400.ms))
                           : ListView.builder(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -723,7 +726,7 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ],
         ),
-      ),
+      ).animate().fadeIn(delay: 500.ms).slideX(begin: 0.1, delay: 500.ms),
     );
   }
 }

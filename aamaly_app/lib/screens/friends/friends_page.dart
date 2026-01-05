@@ -767,135 +767,207 @@ class _FriendsPageState extends State<FriendsPage>
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: kSurface,
           title: const Text('Search Friends', style: TextStyle(color: kText)),
+          // ✅ FIX 1: Add contentPadding to reduce internal padding
+          contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           content: SizedBox(
             width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: searchController,
-                  style: const TextStyle(color: kText),
-                  decoration: InputDecoration(
-                    labelText: 'Email or Name',
-                    labelStyle: const TextStyle(color: kMuted),
-                    hintText: 'friend@example.com',
-                    hintStyle: const TextStyle(color: kMuted),
-                    prefixIcon: const Icon(Icons.search, color: kMuted),
-                    filled: true,
-                    fillColor: kSurface2,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+            // ✅ FIX 2: Set max height to prevent overflow
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight:
+                    MediaQuery.of(context).size.height * 0.5, // 50% of screen
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: searchController,
+                    style: const TextStyle(color: kText),
+                    decoration: InputDecoration(
+                      labelText: 'Email or Name',
+                      labelStyle: const TextStyle(color: kMuted),
+                      hintText: 'friend@example.com',
+                      hintStyle: const TextStyle(color: kMuted),
+                      prefixIcon: const Icon(Icons.search, color: kMuted),
+                      filled: true,
+                      fillColor: kSurface2,
+                      // ✅ FIX 3: Make input more compact
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: kBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            const BorderSide(color: kPrimary, width: 1.2),
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: kBorder),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: kPrimary, width: 1.2),
-                    ),
-                  ),
-                  onChanged: (value) async {
-                    if (value.trim().isEmpty) {
-                      setDialogState(() {
-                        searchResults = [];
-                      });
-                      return;
-                    }
-
-                    setDialogState(() {
-                      isSearching = true;
-                    });
-
-                    try {
-                      final results = await _friendService.searchUsers(
-                        query: value,
-                        currentUserId: currentUserId,
-                      );
+                    onChanged: (value) async {
+                      if (value.trim().isEmpty) {
+                        setDialogState(() {
+                          searchResults = [];
+                        });
+                        return;
+                      }
 
                       setDialogState(() {
-                        searchResults = results;
-                        isSearching = false;
+                        isSearching = true;
                       });
-                    } catch (e) {
-                      setDialogState(() {
-                        isSearching = false;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                if (isSearching)
-                  const CircularProgressIndicator()
-                else if (searchResults.isNotEmpty)
-                  SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: searchResults.length,
-                      itemBuilder: (context, index) {
-                        final user = searchResults[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: kPrimary,
-                            child: Text(
-                              user.initials,
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          title: Text(user.name,
-                              style: const TextStyle(color: kText)),
-                          subtitle: Text(user.email,
-                              style: const TextStyle(color: kMuted)),
-                          trailing: ElevatedButton(
-                            onPressed: () async {
-                              try {
-                                await _friendService.sendFriendRequest(
-                                  senderId: currentUserId,
-                                  receiverId: user.id,
-                                );
 
-                                Navigator.pop(dialogContext);
-
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Friend request sent!'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content:
-                                          Text(ErrorHandler.getErrorMessage(e)),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: kPrimary,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('Add'),
-                          ),
+                      try {
+                        final results = await _friendService.searchUsers(
+                          query: value,
+                          currentUserId: currentUserId,
                         );
-                      },
+
+                        setDialogState(() {
+                          searchResults = results;
+                          isSearching = false;
+                        });
+                      } catch (e) {
+                        setDialogState(() {
+                          isSearching = false;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ✅ FIX 4: Wrap results in Flexible to prevent overflow
+                  if (isSearching)
+                    const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(),
+                    )
+                  else if (searchResults.isNotEmpty)
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: searchResults.length,
+                        itemBuilder: (context, index) {
+                          final user = searchResults[index];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: kSurface2,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: kBorder),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              leading: CircleAvatar(
+                                backgroundColor: kPrimary,
+                                radius: 20,
+                                child: Text(
+                                  user.initials,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                user.name,
+                                style: const TextStyle(
+                                  color: kText,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                user.email,
+                                style: const TextStyle(
+                                  color: kMuted,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: ElevatedButton(
+                                onPressed: () async {
+                                  try {
+                                    await _friendService.sendFriendRequest(
+                                      senderId: currentUserId,
+                                      receiverId: user.id,
+                                    );
+
+                                    Navigator.pop(dialogContext);
+
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Friend request sent!'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              ErrorHandler.getErrorMessage(e)),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: kPrimary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'Add',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  else if (searchController.text.isNotEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'No users found',
+                        style: TextStyle(color: kMuted),
+                      ),
                     ),
-                  )
-                else if (searchController.text.isNotEmpty)
-                  const Text('No users found', style: TextStyle(color: kMuted)),
-              ],
+                ],
+              ),
             ),
           ),
+          // ✅ FIX 5: Make actions more compact
+          actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
               child: const Text('Close', style: TextStyle(color: kText)),
             ),
           ],

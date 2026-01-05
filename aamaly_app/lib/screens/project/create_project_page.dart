@@ -652,22 +652,34 @@ class _CreateProjectPageState extends State<CreateProjectPage> {
                 // Team Members
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Text('Team Members (Optional)',
+                    const Expanded(
+                      child: Text(
+                        'Team Members (Optional)',
                         style: TextStyle(
-                            color: _muted, fontWeight: FontWeight.w600)),
+                            color: _muted, fontWeight: FontWeight.w600),
+                      ),
+                    ),
                     TextButton.icon(
                       onPressed: _showCollaboratorSelection,
                       icon: const Icon(Icons.person_add, size: 18),
-                      label: Text(_selectedCollaboratorIds.isEmpty
-                          ? 'Add Members'
-                          : 'Edit Members'),
-                      style:
-                          TextButton.styleFrom(foregroundColor: _selectedColor),
+                      label: Text(
+                        _selectedCollaboratorIds.isEmpty
+                            ? 'Add'
+                            : 'Edit', // ✅ Shorter text
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: _selectedColor,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 8), // ✅ OUTSIDE the Row!
 
                 if (_selectedCollaboratorIds.isEmpty)
                   Container(
